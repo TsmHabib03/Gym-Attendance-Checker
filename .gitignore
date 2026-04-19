@@ -1,0 +1,11 @@
+/.env
+/.env.docker
+/vendor/
+/storage/logs/*.log
+/public/uploads/member_photos/*
+/public/uploads/checkin_photos/*
+!/public/uploads/member_photos/.gitkeep
+!/public/uploads/checkin_photos/.gitkeep
+/.idea/
+/.vscode/
+Thumbs.db

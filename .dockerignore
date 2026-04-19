@@ -1,0 +1,10 @@
+.git
+.gitignore
+.vscode
+.idea
+vendor
+storage/logs
+public/uploads/member_photos
+public/uploads/checkin_photos
+.env
+.env.docker

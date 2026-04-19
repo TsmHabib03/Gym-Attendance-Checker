@@ -1,0 +1,62 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env.docker
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - member_photos:/var/www/html/public/uploads/member_photos
+      - checkin_photos:/var/www/html/public/uploads/checkin_photos
+      - app_logs:/var/www/html/storage/logs
+    networks:
+      - gym-network
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "8080:80"
+    volumes:
+      - member_photos:/var/www/html/public/uploads/member_photos:ro
+      - checkin_photos:/var/www/html/public/uploads/checkin_photos:ro
+    networks:
+      - gym-network
+
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    env_file:
+      - .env.docker
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - gym-network
+
+volumes:
+  db_data:
+  member_photos:
+  checkin_photos:
+  app_logs:
+
+networks:
+  gym-network:
+    driver: bridge
