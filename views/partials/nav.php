@@ -14,9 +14,8 @@ $navLinks = [
 ?>
 
 <!-- ============================================================
-     NAVIGATION HEADER
-     Logo placeholder: replace the SVG icon below with your gym logo image
-     ============================================================ -->
+  NAVIGATION HEADER
+  ============================================================ -->
 <header id="site-header" style="
   position: sticky; top: 0; z-index: 50;
   background: rgba(8,8,8,0.95);
@@ -35,8 +34,6 @@ $navLinks = [
     gap: 24px;
   ">
 
-    <!-- ========== LOGO PLACEHOLDER ========== -->
-    <!-- Replace the block below with: <img src="<?= e(asset('images/logo.svg')) ?>" alt="Gym Logo" style="height: 32px;"> -->
     <a href="<?= e(url('/dashboard')) ?>" style="
       display: flex;
       align-items: center;
@@ -44,23 +41,11 @@ $navLinks = [
       text-decoration: none;
       flex-shrink: 0;
     ">
-      <!-- LOGO PLACEHOLDER: swap this SVG for your real logo -->
-      <div style="
-        width: 32px; height: 32px;
-        background: var(--white);
-        border-radius: 2px;
-        display: flex; align-items: center; justify-content: center;
-        flex-shrink: 0;
-      ">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="1" y="7.5" width="3.5" height="3" fill="#080808"/>
-          <rect x="13.5" y="7.5" width="3.5" height="3" fill="#080808"/>
-          <rect x="4.5" y="5" width="2" height="8" fill="#080808"/>
-          <rect x="11.5" y="5" width="2" height="8" fill="#080808"/>
-          <rect x="6.5" y="8" width="5" height="2" fill="#080808"/>
-        </svg>
-      </div>
-      <!-- END LOGO PLACEHOLDER -->
+      <img
+        src="<?= e(asset('img/repcorelogo1-removebg-preview.png')) ?>"
+        alt="Gym Rep Core"
+        style="height: 36px; width: auto; display: block; flex-shrink: 0;"
+      >
       <span style="
         font-family: 'Bebas Neue', sans-serif;
         font-size: 18px;
@@ -69,7 +54,6 @@ $navLinks = [
         line-height: 1;
       "><?= e((string) \App\Core\Config::get('APP_NAME', 'Gym Attendance')) ?></span>
     </a>
-    <!-- ========== END LOGO PLACEHOLDER ========== -->
 
     <?php if ($auth): ?>
 
@@ -194,33 +178,22 @@ $navLinks = [
   overflow-y: auto;
 " aria-hidden="true">
 
-  <!-- Panel header with LOGO PLACEHOLDER -->
+  <!-- Panel header -->
   <div style="
     padding: 20px 20px 16px;
     border-bottom: 1px solid var(--border);
     display: flex; align-items: center; justify-content: space-between;
   ">
-    <!-- LOGO PLACEHOLDER (mobile panel) -->
-    <div style="display: flex; align-items: center; gap: 8px;">
-      <div style="
-        width: 28px; height: 28px;
-        background: var(--white);
-        border-radius: 2px;
-        display: flex; align-items: center; justify-content: center;
-      ">
-        <svg width="16" height="16" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="1" y="7.5" width="3.5" height="3" fill="#080808"/>
-          <rect x="13.5" y="7.5" width="3.5" height="3" fill="#080808"/>
-          <rect x="4.5" y="5" width="2" height="8" fill="#080808"/>
-          <rect x="11.5" y="5" width="2" height="8" fill="#080808"/>
-          <rect x="6.5" y="8" width="5" height="2" fill="#080808"/>
-        </svg>
-      </div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <img
+        src="<?= e(asset('img/repcorelogo1-removebg-preview.png')) ?>"
+        alt="Gym Rep Core"
+        style="height: 28px; width: auto; display: block;"
+      >
       <span style="font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 0.1em; color: var(--white);">
         <?= e((string) \App\Core\Config::get('APP_NAME', 'Gym')) ?>
       </span>
     </div>
-    <!-- END LOGO PLACEHOLDER (mobile panel) -->
     <button type="button" id="mobileNavClose" style="
       width: 36px; height: 36px;
       background: var(--raised);

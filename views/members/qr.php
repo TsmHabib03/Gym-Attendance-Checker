@@ -11,9 +11,7 @@ $photoSrc = !empty($member['photo_path'])
 
 $membershipActive = (new DateTimeImmutable((string) $member['membership_end_date'])) >= new DateTimeImmutable('today');
 $membershipStatus = $membershipActive ? 'Active' : 'Expired';
-$membershipClass = $membershipActive
-    ? 'bg-emerald-400/20 text-emerald-300 ring-emerald-400/40'
-    : 'bg-rose-400/20 text-rose-300 ring-rose-400/40';
+$statusBadgeClass = $membershipActive ? 'stat-badge stat-badge-ok' : 'stat-badge stat-badge-danger';
 
 $rawPayload = trim((string) $qrPayloadJson);
 $prettyPayload = $rawPayload;
@@ -41,75 +39,108 @@ if ($qrTokenForRender === '') {
 require __DIR__ . '/../partials/head.php';
 require __DIR__ . '/../partials/nav.php';
 ?>
-<main class="mx-auto w-full max-w-7xl px-3 pb-8 sm:px-4 md:px-6 lg:px-8 lg:pb-10">
-  <section class="fade-up mt-4 rounded-[30px] border border-slate-800 bg-[#070b12]/90 p-3 shadow-2xl shadow-black/50 sm:mt-6 sm:p-4 lg:p-6 print-surface">
-    <div class="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-5">
-      <aside class="order-2 rounded-2xl border border-slate-800 bg-[#0f131b] p-4 sm:p-5 lg:order-1 print-surface">
-        <p class="text-xs uppercase tracking-[0.2em] text-slate-400 print-ink">QR Export</p>
-        <h1 class="mt-2 font-display text-3xl font-bold leading-tight text-white print-ink sm:text-4xl">Member QR card</h1>
-        <p class="mt-3 text-sm text-slate-400 print-ink">Print, download, or regenerate a scanner-ready QR for this member.</p>
-
-        <div class="mt-5 rounded-xl border border-slate-700 bg-slate-900/70 p-4 print-surface">
-          <div class="flex items-center gap-3">
-            <img src="<?= e($photoSrc) ?>" alt="Member photo" class="h-16 w-16 rounded-xl object-cover ring-1 ring-slate-700">
-            <div>
-              <p class="text-sm font-semibold text-slate-100 print-ink"><?= e((string) $member['full_name']) ?></p>
-              <p class="text-xs text-slate-400 print-ink"><?= e((string) $member['member_code']) ?></p>
-            </div>
-          </div>
-
-          <div class="mt-3 flex items-center justify-between text-xs text-slate-400 print-ink">
-            <span>Membership</span>
-            <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 <?= e($membershipClass) ?> print-ink"><?= e($membershipStatus) ?></span>
-          </div>
-          <div class="mt-2 flex items-center justify-between text-xs text-slate-400 print-ink">
-            <span>End date</span>
-            <span class="font-semibold text-slate-200 print-ink"><?= e((string) $member['membership_end_date']) ?></span>
-          </div>
-          <div class="mt-2 flex items-center justify-between text-xs text-slate-400 print-ink">
-            <span>Email</span>
-            <span class="font-semibold text-slate-200 print-ink"><?= e((string) ($member['email'] ?? '-')) ?></span>
-          </div>
-          <div class="mt-2 flex items-center justify-between text-xs text-slate-400 print-ink">
-            <span>Gender</span>
-            <span class="font-semibold text-slate-200 print-ink"><?= e((string) ($member['gender'] ?? '-')) ?></span>
-          </div>
-        </div>
-
-        <div class="no-print mt-5 space-y-2">
-          <a href="<?= e(url('/members')) ?>" class="flex h-11 items-center justify-center rounded-xl border border-slate-600 px-4 text-center text-sm font-semibold text-slate-200 transition hover:border-slate-400 hover:bg-slate-800">Back to Members</a>
-          <button type="button" onclick="window.print()" class="block h-11 w-full rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-100">Print QR Card</button>
-          <a id="downloadQrPng" href="#" class="pointer-events-none flex h-11 items-center justify-center rounded-xl border border-slate-600 bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-slate-200 opacity-60 transition hover:border-slate-400 hover:bg-slate-800">Download QR PNG</a>
-          <button id="regenerateQrBtn" type="button" class="block h-11 w-full rounded-xl border border-cyan-500/50 bg-cyan-500/10 px-4 py-2.5 text-sm font-semibold text-cyan-200 transition hover:border-cyan-400 hover:bg-cyan-500/20">Regenerate QR</button>
-        </div>
-      </aside>
-
-      <section class="order-1 rounded-2xl border border-slate-800 bg-[#0f141d] p-4 sm:p-5 lg:order-2 print-surface">
-        <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 class="font-display text-2xl font-bold text-white print-ink">Scanner Payload</h2>
-            <p class="text-sm text-slate-400 print-ink">QR encodes a scanner token for maximum scan reliability. Full payload remains available below.</p>
-          </div>
-          <p id="qrStatus" class="text-sm font-semibold text-cyan-300">Rendering QR code...</p>
-        </div>
-
-        <div class="mt-5 grid gap-4 lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)]">
-          <div class="rounded-2xl border border-slate-700 bg-white p-3 sm:p-4">
-            <div id="memberQrCanvas" class="mx-auto flex min-h-[240px] w-full max-w-[320px] items-center justify-center sm:min-h-[280px]"></div>
-          </div>
-
-          <div class="rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
-            <div class="flex items-center justify-between">
-              <p class="text-sm font-semibold text-slate-200">Raw QR Payload</p>
-              <button id="copyPayloadBtn" type="button" class="no-print rounded-lg border border-slate-600 px-3 py-1 text-xs font-semibold text-slate-200 transition hover:border-slate-400 hover:bg-slate-800">Copy</button>
-            </div>
-            <textarea id="payloadOutput" class="mt-3 h-56 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200 outline-none sm:h-64" readonly><?= e($prettyPayload) ?></textarea>
-          </div>
-        </div>
-      </section>
+<div class="page-enter" style="max-width: 1280px; margin: 0 auto; padding: 32px 16px 64px;">
+  <!-- Page header -->
+  <div style="margin-bottom: 32px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+    <div>
+      <p style="font-size: 11px; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; margin: 0 0 6px;">QR Export</p>
+      <h1 style="
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: clamp(32px, 5vw, 48px);
+        letter-spacing: 0.10em;
+        color: var(--white);
+        margin: 0; line-height: 1;
+      " class="print-ink">Member QR Card</h1>
     </div>
-  </section>
-</main>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;" class="no-print">
+      <a href="<?= e(url('/members')) ?>" class="btn-ghost" style="height: 38px; font-size: 11px;">← Members</a>
+    </div>
+  </div>
+
+  <!-- Two-column layout -->
+  <div style="display: grid; gap: 16px;" class="lg:grid-cols-[280px_1fr]">
+    <!-- Sidebar -->
+    <aside class="order-2 lg:order-1 print-surface" style="display: flex; flex-direction: column; gap: 16px;">
+      <!-- Member info -->
+      <div class="card print-surface" style="padding: 20px;">
+        <div class="section-rule" style="margin-bottom: 16px;">
+          <span style="font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 0.12em; color: var(--white);" class="print-ink">Member Info</span>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;">
+          <img
+            src="<?= e($photoSrc) ?>"
+            alt="Member photo"
+            style="width: 64px; height: 64px; border-radius: 2px; object-fit: cover; border: 1px solid var(--border); flex-shrink: 0;"
+          >
+          <div>
+            <p style="font-size: 14px; font-weight: 600; color: var(--near); margin: 0 0 2px;" class="print-ink"><?= e((string) $member['full_name']) ?></p>
+            <p style="font-size: 11px; color: var(--muted); margin: 0 0 8px;" class="print-ink"><?= e((string) $member['member_code']) ?></p>
+            <span class="<?= e($statusBadgeClass) ?> print-ink"><?= e($membershipStatus) ?></span>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 2px; background: var(--border); border: 1px solid var(--border); border-radius: 2px; overflow: hidden;">
+          <?php
+          $infoRows = [
+            ['End date', (string) $member['membership_end_date']],
+            ['Email', (string) ($member['email'] ?? '-')],
+            ['Gender', (string) ($member['gender'] ?? '-')],
+          ];
+          foreach ($infoRows as [$rowLabel, $rowVal]): ?>
+            <div style="background: var(--raised); padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; gap: 8px;" class="print-surface">
+              <span style="font-size: 11px; color: var(--muted);" class="print-ink"><?= e($rowLabel) ?></span>
+              <span style="font-size: 11px; font-weight: 600; color: var(--near);" class="print-ink"><?= e($rowVal) ?></span>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="card no-print" style="padding: 20px;">
+        <p class="label" style="margin-bottom: 12px;">Actions</p>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <a href="<?= e(url('/members')) ?>" class="btn-ghost" style="width: 100%; font-size: 12px;">← Back to Members</a>
+          <button type="button" onclick="window.print()" class="btn-primary" style="width: 100%; font-size: 12px;">Print QR Card</button>
+          <a id="downloadQrPng" href="#" class="btn-ghost" style="width: 100%; font-size: 12px; opacity: 0.5; pointer-events: none;">Download QR PNG</a>
+          <button id="regenerateQrBtn" type="button" class="btn-ghost" style="width: 100%; font-size: 12px;">Regenerate QR</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main: QR canvas + payload -->
+    <section class="order-1 lg:order-2 card print-surface" style="padding: 20px 24px;">
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
+        <div>
+          <h2 style="font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 0.12em; color: var(--white); margin: 0 0 4px;" class="print-ink">Scanner Payload</h2>
+          <p style="font-size: 13px; color: var(--muted); margin: 0;" class="print-ink">QR encodes a scanner token. Full payload available below.</p>
+        </div>
+        <span id="qrStatus" style="font-size: 13px; font-weight: 600; color: var(--dim);" class="print-ink">Rendering QR code...</span>
+      </div>
+
+      <div style="display: grid; gap: 16px;" class="lg:grid-cols-[minmax(240px,300px)_1fr]">
+        <!-- QR canvas area -->
+        <div style="background: #ffffff; border: 1px solid var(--border); border-radius: 2px; padding: 16px; display: flex; align-items: center; justify-content: center;" class="print-surface">
+          <div id="memberQrCanvas" style="width: 100%; max-width: 280px; min-height: 240px; display: flex; align-items: center; justify-content: center;"></div>
+        </div>
+
+        <!-- Raw payload -->
+        <div class="card-raised" style="padding: 16px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+            <p style="font-size: 13px; font-weight: 600; color: var(--light); margin: 0;" class="print-ink">Raw QR Payload</p>
+            <button id="copyPayloadBtn" type="button" class="btn-ghost no-print" style="height: 28px; padding: 0 10px; font-size: 11px;">Copy</button>
+          </div>
+          <textarea
+            id="payloadOutput"
+            class="input"
+            style="height: 200px; resize: vertical; font-family: monospace; font-size: 11px; line-height: 1.6;"
+            readonly
+          ><?= e($prettyPayload) ?></textarea>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
 
 <script src="<?= e(asset('lib/qrcode.min.js')) ?>"></script>
 <script>
@@ -127,21 +158,34 @@ require __DIR__ . '/../partials/nav.php';
   const copyPayloadBtn = document.getElementById('copyPayloadBtn');
   const regenerateQrBtn = document.getElementById('regenerateQrBtn');
   const payloadOutput = document.getElementById('payloadOutput');
+
+  if (!canvasWrap || !status || !downloadLink || !payloadOutput) {
+    return;
+  }
+
   let regenerateLoading = false;
 
   const getQrSize = () => {
-    const width = Math.floor(canvasWrap.clientWidth || 320);
-    return Math.max(220, Math.min(320, width));
+    const width = Math.floor(canvasWrap.clientWidth || 280);
+    return Math.max(200, Math.min(280, width));
   };
 
-  const setStatus = (message, className) => {
+  const setStatus = (message, tone = 'info') => {
+    const colors = {
+      info: 'var(--dim)',
+      success: 'var(--near)',
+      warning: '#f59e0b',
+      error: '#f87171',
+      accent: '#22d3ee',
+    };
     status.textContent = message;
-    status.className = 'text-sm font-semibold ' + className;
+    status.style.color = colors[tone] || colors.info;
   };
 
   const disableDownload = () => {
     downloadLink.href = '#';
-    downloadLink.classList.add('pointer-events-none', 'opacity-60');
+    downloadLink.style.opacity = '0.5';
+    downloadLink.style.pointerEvents = 'none';
   };
 
   const clearCanvas = () => {
@@ -169,17 +213,18 @@ require __DIR__ . '/../partials/nav.php';
 
       if (!dataUrl) {
         disableDownload();
-        setStatus('QR rendered, but PNG download is unavailable in this browser.', 'text-amber-300');
+        setStatus('QR rendered, but PNG download is unavailable in this browser.', 'warning');
         return;
       }
 
       const safeCode = (memberCode || 'member').toLowerCase().replace(/[^a-z0-9\-_]+/g, '-');
       downloadLink.href = dataUrl;
       downloadLink.download = safeCode + '-qr.png';
-      downloadLink.classList.remove('pointer-events-none', 'opacity-60');
+      downloadLink.style.opacity = '1';
+      downloadLink.style.pointerEvents = 'auto';
     } catch (_error) {
       disableDownload();
-      setStatus('QR rendered but PNG download is not supported here.', 'text-amber-300');
+      setStatus('QR rendered but PNG download is not supported here.', 'warning');
     }
   };
 
@@ -187,13 +232,13 @@ require __DIR__ . '/../partials/nav.php';
     const normalizedContent = String(content || '').trim();
     if (normalizedContent === '') {
       disableDownload();
-      setStatus('QR token is empty for this member.', 'text-rose-300');
+      setStatus('QR token is empty for this member.', 'error');
       return;
     }
 
     if (!window.QRCode) {
       disableDownload();
-      setStatus('QR renderer is unavailable. Reload this page.', 'text-rose-300');
+      setStatus('QR renderer is unavailable. Reload this page.', 'error');
       return;
     }
 
@@ -211,19 +256,23 @@ require __DIR__ . '/../partials/nav.php';
       });
     } catch (_error) {
       disableDownload();
-      setStatus('Unable to render QR code payload.', 'text-rose-300');
+      setStatus('Unable to render QR code payload.', 'error');
       return;
     }
 
-    setStatus('QR ready. Print, download, or regenerate.', 'text-emerald-300');
+    setStatus('QR ready. Print, download, or regenerate.', 'success');
     window.setTimeout(enableDownload, 30);
   };
 
   const setRegenerateLoading = (loading) => {
     regenerateLoading = loading;
+    if (!regenerateQrBtn) {
+      return;
+    }
+
     regenerateQrBtn.disabled = loading;
-    regenerateQrBtn.classList.toggle('opacity-70', loading);
-    regenerateQrBtn.classList.toggle('cursor-not-allowed', loading);
+    regenerateQrBtn.style.opacity = loading ? '0.7' : '1';
+    regenerateQrBtn.style.pointerEvents = loading ? 'none' : 'auto';
     regenerateQrBtn.textContent = loading ? 'Regenerating...' : 'Regenerate QR';
   };
 
@@ -238,7 +287,7 @@ require __DIR__ . '/../partials/nav.php';
     }
 
     setRegenerateLoading(true);
-    setStatus('Regenerating QR token...', 'text-cyan-300');
+    setStatus('Regenerating QR token...', 'accent');
 
     try {
       const body = new URLSearchParams({
@@ -279,10 +328,10 @@ require __DIR__ . '/../partials/nav.php';
 
       payloadOutput.value = formatPayloadForTextarea(payload);
       renderQr(qrText);
-      setStatus('QR regenerated. Old QR codes are now invalid.', 'text-emerald-300');
+      setStatus('QR regenerated. Old QR codes are now invalid.', 'success');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to regenerate QR.';
-      setStatus(message, 'text-rose-300');
+      setStatus(message, 'error');
     } finally {
       setRegenerateLoading(false);
     }
@@ -294,15 +343,15 @@ require __DIR__ . '/../partials/nav.php';
   if (copyPayloadBtn) {
     copyPayloadBtn.addEventListener('click', async () => {
       if (!navigator.clipboard || !payloadOutput) {
-        setStatus('Clipboard is not available in this browser.', 'text-amber-300');
+        setStatus('Clipboard is not available in this browser.', 'warning');
         return;
       }
 
       try {
         await navigator.clipboard.writeText(payloadOutput.value);
-        setStatus('Payload copied to clipboard.', 'text-cyan-300');
+        setStatus('Payload copied to clipboard.', 'accent');
       } catch (_error) {
-        setStatus('Copy failed. Select and copy manually.', 'text-amber-300');
+        setStatus('Copy failed. Select and copy manually.', 'warning');
       }
     });
   }

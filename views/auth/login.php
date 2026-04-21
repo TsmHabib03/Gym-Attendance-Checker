@@ -20,28 +20,12 @@ require __DIR__ . '/../partials/head.php';
 ">
   <div class="page-enter" style="width: 100%; max-width: 400px;">
 
-    <!-- ========== LOGO PLACEHOLDER ========== -->
-    <!-- Replace this entire block with your gym logo: -->
-    <!-- <img src="<?= e(asset('images/logo.svg')) ?>" alt="Gym Logo" style="display: block; margin: 0 auto 40px; height: 48px;"> -->
     <div style="text-align: center; margin-bottom: 40px;">
-      <div style="
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 56px; height: 56px;
-        background: var(--white);
-        border-radius: 4px;
-        margin-bottom: 16px;
-      ">
-        <svg width="32" height="32" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="1" y="7.5" width="3.5" height="3" fill="#080808"/>
-          <rect x="13.5" y="7.5" width="3.5" height="3" fill="#080808"/>
-          <rect x="4.5" y="5" width="2" height="8" fill="#080808"/>
-          <rect x="11.5" y="5" width="2" height="8" fill="#080808"/>
-          <rect x="6.5" y="8" width="5" height="2" fill="#080808"/>
-        </svg>
-      </div>
-      <!-- END LOGO PLACEHOLDER -->
+      <img
+        src="<?= e(asset('img/repcore-removebg-preview.png')) ?>"
+        alt="Gym Rep Core"
+        style="height: 72px; width: auto; display: block; margin: 0 auto 20px;"
+      >
       <h1 style="
         font-family: 'Bebas Neue', sans-serif;
         font-size: 32px;
