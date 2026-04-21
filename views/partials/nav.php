@@ -4,123 +4,322 @@ declare(strict_types=1);
 
 $auth = \App\Core\Auth::user();
 $isDashboard = !empty($dashboardShell) || (isset($title) && $title === 'Dashboard');
+$currentPath = \App\Core\Request::path();
 
-$shellClass = $isDashboard
-    ? 'border border-slate-800 bg-[#090d14]/90 shadow-xl shadow-black/40'
-    : 'card shadow-glow';
-$titleClass = $isDashboard ? 'text-slate-100' : 'text-brand-800';
-$subtitleClass = $isDashboard ? 'text-slate-400' : 'text-slate-600';
-$linkClass = $isDashboard
-    ? 'rounded-lg bg-slate-900/70 px-3 py-2 font-semibold text-slate-200 ring-1 ring-slate-700 transition hover:-translate-y-0.5 hover:bg-slate-800 hover:text-white'
-    : 'rounded-lg bg-white px-3 py-2 font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:text-brand-700';
-$scanClass = $isDashboard
-    ? 'rounded-lg bg-white px-3 py-2 font-semibold text-slate-900 transition hover:-translate-y-0.5 hover:bg-slate-100'
-    : 'rounded-lg bg-brand-500 px-3 py-2 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-brand-600';
-$logoutClass = $isDashboard
-    ? 'rounded-lg bg-rose-500/90 px-3 py-2 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-rose-500'
-    : 'rounded-lg bg-rose-500 px-3 py-2 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-rose-600';
-$mobilePanelClass = $isDashboard
-    ? 'border-l border-slate-800 bg-[#0a0f17]/95 text-slate-100'
-    : 'border-l border-slate-200 bg-white/95 text-slate-900';
+$navLinks = [
+    '/dashboard'    => 'Dashboard',
+    '/members'      => 'Members',
+    '/attendance/scan' => 'Scan QR',
+];
 ?>
-<header class="relative z-10">
-  <div class="mx-auto w-full max-w-7xl px-3 py-3 sm:px-4 sm:py-4 md:px-6 lg:px-8">
-    <div class="flex flex-col gap-3 rounded-2xl p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-4 <?= e($shellClass) ?>">
-      <div>
-        <p class="font-display text-xl font-bold xs:text-2xl <?= e($titleClass) ?>">Gym Attendance Checker</p>
-        <p class="text-xs xs:text-sm <?= e($subtitleClass) ?>">QR-based check-in and membership monitoring</p>
+
+<!-- ============================================================
+     NAVIGATION HEADER
+     Logo placeholder: replace the SVG icon below with your gym logo image
+     ============================================================ -->
+<header id="site-header" style="
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(8,8,8,0.95);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+">
+  <div style="
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 16px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+  ">
+
+    <!-- ========== LOGO PLACEHOLDER ========== -->
+    <!-- Replace the block below with: <img src="<?= e(asset('images/logo.svg')) ?>" alt="Gym Logo" style="height: 32px;"> -->
+    <a href="<?= e(url('/dashboard')) ?>" style="
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      flex-shrink: 0;
+    ">
+      <!-- LOGO PLACEHOLDER: swap this SVG for your real logo -->
+      <div style="
+        width: 32px; height: 32px;
+        background: var(--white);
+        border-radius: 2px;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+      ">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="7.5" width="3.5" height="3" fill="#080808"/>
+          <rect x="13.5" y="7.5" width="3.5" height="3" fill="#080808"/>
+          <rect x="4.5" y="5" width="2" height="8" fill="#080808"/>
+          <rect x="11.5" y="5" width="2" height="8" fill="#080808"/>
+          <rect x="6.5" y="8" width="5" height="2" fill="#080808"/>
+        </svg>
       </div>
-      <?php if ($auth): ?>
-        <button
-          type="button"
-          id="mobileNavToggle"
-          class="inline-flex h-11 items-center justify-center rounded-xl border border-slate-600 bg-slate-900/70 px-4 text-sm font-semibold text-slate-100 transition hover:border-slate-400 hover:bg-slate-800 sm:hidden"
-          aria-expanded="false"
-          aria-controls="mobileNavPanel"
-        >
-          Menu
-        </button>
+      <!-- END LOGO PLACEHOLDER -->
+      <span style="
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 18px;
+        letter-spacing: 0.12em;
+        color: var(--white);
+        line-height: 1;
+      "><?= e((string) \App\Core\Config::get('APP_NAME', 'Gym Attendance')) ?></span>
+    </a>
+    <!-- ========== END LOGO PLACEHOLDER ========== -->
 
-        <div class="hidden flex-wrap items-center gap-2 text-sm sm:flex">
-          <a href="<?= e(url('/dashboard')) ?>" class="<?= e($linkClass) ?>">Dashboard</a>
-          <a href="<?= e(url('/members')) ?>" class="<?= e($linkClass) ?>">Members</a>
-          <a href="<?= e(url('/attendance/scan')) ?>" class="<?= e($scanClass) ?>">Scan QR</a>
-          <form action="<?= e(url('/logout')) ?>" method="post" class="inline">
-            <input type="hidden" name="_csrf" value="<?= e(\App\Core\Csrf::token()) ?>">
-            <button type="submit" class="<?= e($logoutClass) ?>">Sign out</button>
-          </form>
-        </div>
+    <?php if ($auth): ?>
 
-        <div id="mobileNavOverlay" class="fixed inset-0 z-40 hidden bg-black/60 sm:hidden" aria-hidden="true"></div>
-        <aside id="mobileNavPanel" class="fixed inset-y-0 right-0 z-50 flex w-[85vw] max-w-xs translate-x-full flex-col px-4 py-5 shadow-2xl transition-transform duration-200 ease-out sm:hidden <?= e($mobilePanelClass) ?>" aria-hidden="true">
-          <div class="mb-4 flex items-center justify-between">
-            <p class="font-display text-lg font-bold">Navigation</p>
-            <button type="button" id="mobileNavClose" class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-600 bg-slate-900/50 text-sm font-semibold text-slate-100">X</button>
-          </div>
-          <div class="space-y-2">
-            <a href="<?= e(url('/dashboard')) ?>" class="flex h-11 items-center rounded-xl border border-slate-700 bg-slate-900/50 px-4 text-sm font-semibold text-slate-100">Dashboard</a>
-            <a href="<?= e(url('/members')) ?>" class="flex h-11 items-center rounded-xl border border-slate-700 bg-slate-900/50 px-4 text-sm font-semibold text-slate-100">Members</a>
-            <a href="<?= e(url('/attendance/scan')) ?>" class="flex h-11 items-center rounded-xl bg-white px-4 text-sm font-semibold text-slate-900">Scan QR</a>
-            <form action="<?= e(url('/logout')) ?>" method="post" class="pt-2">
-              <input type="hidden" name="_csrf" value="<?= e(\App\Core\Csrf::token()) ?>">
-              <button type="submit" class="flex h-11 w-full items-center justify-center rounded-xl bg-rose-500/90 px-4 text-sm font-semibold text-white">Sign out</button>
-            </form>
-          </div>
-        </aside>
-      <?php endif; ?>
-    </div>
+      <!-- Desktop nav -->
+      <nav style="
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        flex: 1;
+        justify-content: center;
+      " class="hidden sm:flex">
+        <?php foreach ($navLinks as $href => $label): ?>
+          <?php
+          $isActive = ($currentPath === $href);
+          $isScan   = ($href === '/attendance/scan');
+          ?>
+          <?php if ($isScan): ?>
+            <a href="<?= e(url($href)) ?>" style="
+              display: inline-flex; align-items: center;
+              height: 32px; padding: 0 14px;
+              background: var(--white);
+              color: var(--bg);
+              font-size: 11px; font-weight: 700;
+              letter-spacing: 0.12em; text-transform: uppercase;
+              border-radius: 2px; text-decoration: none;
+              transition: background 0.15s;
+              margin-left: 8px;
+            " onmouseover="this.style.background='#eee'" onmouseout="this.style.background='var(--white)'">
+              <?= e($label) ?>
+            </a>
+          <?php else: ?>
+            <a href="<?= e(url($href)) ?>" style="
+              display: inline-flex; align-items: center;
+              height: 32px; padding: 0 14px;
+              background: <?= $isActive ? 'rgba(255,255,255,0.08)' : 'transparent' ?>;
+              color: <?= $isActive ? 'var(--white)' : 'var(--dim)' ?>;
+              font-size: 11px; font-weight: <?= $isActive ? '600' : '500' ?>;
+              letter-spacing: 0.10em; text-transform: uppercase;
+              border-radius: 2px; text-decoration: none;
+              border: 1px solid <?= $isActive ? 'var(--line)' : 'transparent' ?>;
+              transition: color 0.15s, background 0.15s;
+            " onmouseover="this.style.color='var(--white)'; this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.color='<?= $isActive ? 'var(--white)' : 'var(--dim)' ?>'; this.style.background='<?= $isActive ? 'rgba(255,255,255,0.08)' : 'transparent' ?>'">
+              <?= e($label) ?>
+            </a>
+          <?php endif; ?>
+        <?php endforeach; ?>
+      </nav>
+
+      <!-- Right side: username + sign out (desktop) -->
+      <div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;" class="hidden sm:flex">
+        <span style="font-size: 12px; color: var(--muted); letter-spacing: 0.04em;">
+          <?= e((string) ($auth['username'] ?? '')) ?>
+        </span>
+        <form action="<?= e(url('/logout')) ?>" method="post" style="margin: 0;">
+          <input type="hidden" name="_csrf" value="<?= e(\App\Core\Csrf::token()) ?>">
+          <button type="submit" style="
+            height: 32px; padding: 0 14px;
+            background: transparent;
+            color: #f87171;
+            font-size: 11px; font-weight: 600;
+            letter-spacing: 0.10em; text-transform: uppercase;
+            border: 1px solid rgba(248,113,113,0.25);
+            border-radius: 2px; cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+          " onmouseover="this.style.background='rgba(248,113,113,0.08)'; this.style.borderColor='rgba(248,113,113,0.45)'" onmouseout="this.style.background='transparent'; this.style.borderColor='rgba(248,113,113,0.25)'">
+            Sign Out
+          </button>
+        </form>
+      </div>
+
+      <!-- Mobile: hamburger -->
+      <button
+        type="button"
+        id="mobileNavToggle"
+        aria-expanded="false"
+        aria-controls="mobileNavPanel"
+        style="
+          display: none;
+          width: 40px; height: 40px;
+          background: transparent;
+          border: 1px solid var(--border);
+          border-radius: 2px;
+          cursor: pointer;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          padding: 0;
+          flex-shrink: 0;
+        "
+        class="sm:hidden"
+      >
+        <span id="burgerTop"    style="display: block; width: 18px; height: 1px; background: var(--white); transition: transform 0.2s;"></span>
+        <span id="burgerMid"    style="display: block; width: 18px; height: 1px; background: var(--white); transition: opacity 0.2s;"></span>
+        <span id="burgerBottom" style="display: block; width: 18px; height: 1px; background: var(--white); transition: transform 0.2s;"></span>
+      </button>
+
+    <?php endif; ?>
   </div>
 </header>
+
 <?php if ($auth): ?>
+
+<!-- Mobile nav overlay -->
+<div id="mobileNavOverlay" style="
+  display: none;
+  position: fixed; inset: 0; z-index: 40;
+  background: rgba(0,0,0,0.75);
+" aria-hidden="true"></div>
+
+<!-- Mobile nav panel -->
+<aside id="mobileNavPanel" style="
+  position: fixed;
+  top: 0; right: 0; bottom: 0; z-index: 45;
+  width: min(300px, 85vw);
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  transform: translateX(100%);
+  transition: transform 0.22s ease-out;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+" aria-hidden="true">
+
+  <!-- Panel header with LOGO PLACEHOLDER -->
+  <div style="
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  ">
+    <!-- LOGO PLACEHOLDER (mobile panel) -->
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="
+        width: 28px; height: 28px;
+        background: var(--white);
+        border-radius: 2px;
+        display: flex; align-items: center; justify-content: center;
+      ">
+        <svg width="16" height="16" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="7.5" width="3.5" height="3" fill="#080808"/>
+          <rect x="13.5" y="7.5" width="3.5" height="3" fill="#080808"/>
+          <rect x="4.5" y="5" width="2" height="8" fill="#080808"/>
+          <rect x="11.5" y="5" width="2" height="8" fill="#080808"/>
+          <rect x="6.5" y="8" width="5" height="2" fill="#080808"/>
+        </svg>
+      </div>
+      <span style="font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 0.1em; color: var(--white);">
+        <?= e((string) \App\Core\Config::get('APP_NAME', 'Gym')) ?>
+      </span>
+    </div>
+    <!-- END LOGO PLACEHOLDER (mobile panel) -->
+    <button type="button" id="mobileNavClose" style="
+      width: 36px; height: 36px;
+      background: var(--raised);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--dim); font-size: 16px; font-weight: 300;
+    ">✕</button>
+  </div>
+
+  <!-- Nav links -->
+  <nav style="padding: 12px 12px; flex: 1;">
+    <?php foreach ($navLinks as $href => $label): ?>
+      <?php
+      $isActive = ($currentPath === $href);
+      $isScan   = ($href === '/attendance/scan');
+      ?>
+      <a href="<?= e(url($href)) ?>" style="
+        display: flex; align-items: center;
+        height: 48px; padding: 0 14px;
+        margin-bottom: 4px;
+        background: <?= $isScan ? 'var(--white)' : ($isActive ? 'rgba(255,255,255,0.06)' : 'transparent') ?>;
+        color: <?= $isScan ? 'var(--bg)' : 'var(--light)' ?>;
+        font-size: 12px; font-weight: 600;
+        letter-spacing: 0.10em; text-transform: uppercase;
+        border: 1px solid <?= $isActive && !$isScan ? 'var(--line)' : ($isScan ? 'transparent' : 'transparent') ?>;
+        border-radius: 2px; text-decoration: none;
+      ">
+        <?= e($label) ?>
+      </a>
+    <?php endforeach; ?>
+  </nav>
+
+  <!-- Sign out (mobile) -->
+  <div style="padding: 12px 12px 24px; border-top: 1px solid var(--border);">
+    <div style="font-size: 11px; color: var(--muted); letter-spacing: 0.06em; margin-bottom: 10px; padding: 0 2px;">
+      Signed in as <?= e((string) ($auth['username'] ?? '')) ?>
+    </div>
+    <form action="<?= e(url('/logout')) ?>" method="post">
+      <input type="hidden" name="_csrf" value="<?= e(\App\Core\Csrf::token()) ?>">
+      <button type="submit" style="
+        width: 100%; height: 44px;
+        background: transparent;
+        color: #f87171;
+        font-size: 12px; font-weight: 600;
+        letter-spacing: 0.10em; text-transform: uppercase;
+        border: 1px solid rgba(248,113,113,0.25);
+        border-radius: 2px; cursor: pointer;
+      ">Sign Out</button>
+    </form>
+  </div>
+</aside>
+
 <script>
-(() => {
-  const toggle = document.getElementById('mobileNavToggle');
-  const closeBtn = document.getElementById('mobileNavClose');
-  const panel = document.getElementById('mobileNavPanel');
-  const overlay = document.getElementById('mobileNavOverlay');
+(function () {
+  var toggle = document.getElementById('mobileNavToggle');
+  var close  = document.getElementById('mobileNavClose');
+  var panel  = document.getElementById('mobileNavPanel');
+  var overlay = document.getElementById('mobileNavOverlay');
+  var top    = document.getElementById('burgerTop');
+  var mid    = document.getElementById('burgerMid');
+  var bot    = document.getElementById('burgerBottom');
+  if (!toggle || !panel) return;
 
-  if (!toggle || !closeBtn || !panel || !overlay) {
-    return;
-  }
-
-  const openPanel = () => {
-    panel.classList.remove('translate-x-full');
-    overlay.classList.remove('hidden');
+  function open() {
+    panel.style.transform = 'translateX(0)';
+    overlay.style.display = 'block';
     panel.setAttribute('aria-hidden', 'false');
     toggle.setAttribute('aria-expanded', 'true');
-    document.body.classList.add('overflow-hidden');
-  };
+    document.body.style.overflow = 'hidden';
+    if (top && mid && bot) {
+      top.style.transform = 'translateY(6px) rotate(45deg)';
+      mid.style.opacity   = '0';
+      bot.style.transform = 'translateY(-6px) rotate(-45deg)';
+    }
+  }
 
-  const closePanel = () => {
-    panel.classList.add('translate-x-full');
-    overlay.classList.add('hidden');
+  function closePanel() {
+    panel.style.transform = 'translateX(100%)';
+    overlay.style.display = 'none';
     panel.setAttribute('aria-hidden', 'true');
     toggle.setAttribute('aria-expanded', 'false');
-    document.body.classList.remove('overflow-hidden');
-  };
-
-  toggle.addEventListener('click', openPanel);
-  closeBtn.addEventListener('click', closePanel);
-  overlay.addEventListener('click', closePanel);
-
-  panel.querySelectorAll('a, button, form').forEach((el) => {
-    el.addEventListener('click', () => {
-      if (el !== toggle) {
-        closePanel();
-      }
-    });
-  });
-
-  window.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      closePanel();
+    document.body.style.overflow = '';
+    if (top && mid && bot) {
+      top.style.transform = '';
+      mid.style.opacity   = '1';
+      bot.style.transform = '';
     }
-  });
+  }
 
-  window.addEventListener('resize', () => {
-    if (window.matchMedia('(min-width: 640px)').matches) {
-      closePanel();
-    }
+  toggle.addEventListener('click', function () {
+    panel.getAttribute('aria-hidden') === 'false' ? closePanel() : open();
+  });
+  if (close)   close.addEventListener('click', closePanel);
+  if (overlay) overlay.addEventListener('click', closePanel);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePanel(); });
+  window.addEventListener('resize', function () {
+    if (window.innerWidth >= 640) closePanel();
   });
 })();
 </script>

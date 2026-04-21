@@ -5,70 +5,144 @@ declare(strict_types=1);
 $title = 'Admin Login';
 $dashboardShell = true;
 require __DIR__ . '/../partials/head.php';
+// NOTE: No nav on login page — intentional
 ?>
-<main class="mx-auto flex min-h-screen w-full max-w-7xl items-center px-3 py-6 sm:px-4 sm:py-8 md:px-6 lg:px-8">
-  <section class="fade-up mx-auto w-full rounded-[30px] border border-slate-800 bg-[#070b12]/90 p-3 shadow-2xl shadow-black/50 sm:p-4 lg:p-6">
-    <div class="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-5">
-      <aside class="order-2 rounded-2xl border border-slate-800 bg-[#0f131b] p-4 sm:p-5 lg:order-1">
-        <div class="rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
-          <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Secure Access</p>
-          <h1 class="mt-2 font-display text-3xl font-bold leading-tight text-white sm:text-4xl">Welcome back, Admin</h1>
-          <p class="mt-3 text-sm text-slate-400">Sign in to manage check-ins, membership status, and operational settings from the control room.</p>
 
-          <div class="mt-5 space-y-2 text-xs text-slate-400">
-            <p class="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2">QR attendance tracking and status validation</p>
-            <p class="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2">Member records, expiry checks, and photo updates</p>
-            <p class="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2">Audit logging and admin-only protected routes</p>
-          </div>
-        </div>
-      </aside>
+<!-- ============================================================
+     LOGIN PAGE — Full-screen centered layout
+     ============================================================ -->
+<main style="
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+">
+  <div class="page-enter" style="width: 100%; max-width: 400px;">
 
-      <article class="order-1 rounded-2xl border border-slate-800 bg-[#0f141d] p-4 sm:p-5 lg:order-2 lg:p-6">
-        <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 class="font-display text-3xl font-bold text-white">Admin Login</h2>
-            <p class="text-sm text-slate-400">Use your credentials to continue.</p>
-          </div>
-          <p class="text-xs uppercase tracking-wide text-slate-500">Session is protected</p>
-        </div>
-
-        <div class="mt-4">
-          <?php require __DIR__ . '/../partials/flash.php'; ?>
-        </div>
-
-        <form action="<?= e(url('/login')) ?>" method="post" class="mt-5 space-y-4" autocomplete="off">
-          <input type="hidden" name="_csrf" value="<?= e($csrfToken) ?>">
-
-          <label class="block">
-            <span class="mb-1 block text-sm font-semibold text-slate-300">Username</span>
-            <input
-              type="text"
-              name="username"
-              value="<?= e(old('username')) ?>"
-              class="h-11 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-slate-100 outline-none ring-cyan-300 transition focus:ring sm:px-4"
-              required
-            >
-          </label>
-
-          <label class="block">
-            <span class="mb-1 block text-sm font-semibold text-slate-300">Password</span>
-            <input
-              type="password"
-              name="password"
-              class="h-11 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-slate-100 outline-none ring-cyan-300 transition focus:ring sm:px-4"
-              required
-            >
-          </label>
-
-          <button
-            type="submit"
-            class="h-11 w-full rounded-xl bg-white px-4 py-2.5 font-semibold text-slate-900 transition hover:-translate-y-0.5 hover:bg-slate-100"
-          >
-            Sign in
-          </button>
-        </form>
-      </article>
+    <!-- ========== LOGO PLACEHOLDER ========== -->
+    <!-- Replace this entire block with your gym logo: -->
+    <!-- <img src="<?= e(asset('images/logo.svg')) ?>" alt="Gym Logo" style="display: block; margin: 0 auto 40px; height: 48px;"> -->
+    <div style="text-align: center; margin-bottom: 40px;">
+      <div style="
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 56px; height: 56px;
+        background: var(--white);
+        border-radius: 4px;
+        margin-bottom: 16px;
+      ">
+        <svg width="32" height="32" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="7.5" width="3.5" height="3" fill="#080808"/>
+          <rect x="13.5" y="7.5" width="3.5" height="3" fill="#080808"/>
+          <rect x="4.5" y="5" width="2" height="8" fill="#080808"/>
+          <rect x="11.5" y="5" width="2" height="8" fill="#080808"/>
+          <rect x="6.5" y="8" width="5" height="2" fill="#080808"/>
+        </svg>
+      </div>
+      <!-- END LOGO PLACEHOLDER -->
+      <h1 style="
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 32px;
+        letter-spacing: 0.15em;
+        color: var(--white);
+        line-height: 1;
+        margin: 0 0 6px;
+      "><?= e((string) \App\Core\Config::get('APP_NAME', 'Gym Attendance')) ?></h1>
+      <p style="font-size: 12px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin: 0;">
+        Admin Control Room
+      </p>
     </div>
-  </section>
+
+    <!-- Flash messages -->
+    <?php
+    $error = flash('error');
+    if ($error): ?>
+      <div class="flash-error" style="margin-bottom: 24px;"><?= e($error) ?></div>
+    <?php endif; ?>
+
+    <!-- Login card -->
+    <div style="
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 32px 28px;
+    ">
+      <!-- Header -->
+      <div style="margin-bottom: 28px;">
+        <h2 style="
+          font-family: 'Bebas Neue', sans-serif;
+          font-size: 22px;
+          letter-spacing: 0.12em;
+          color: var(--white);
+          margin: 0 0 4px;
+        ">Sign In</h2>
+        <p style="font-size: 13px; color: var(--muted); margin: 0;">
+          Enter your credentials to continue.
+        </p>
+      </div>
+
+      <!-- Form -->
+      <form action="<?= e(url('/login')) ?>" method="post" autocomplete="off" style="display: flex; flex-direction: column; gap: 18px;">
+        <input type="hidden" name="_csrf" value="<?= e($csrfToken) ?>">
+
+        <div>
+          <label for="login-username" class="label">Username</label>
+          <input
+            type="text"
+            id="login-username"
+            name="username"
+            value="<?= e(old('username')) ?>"
+            class="input"
+            autocomplete="username"
+            required
+            placeholder="admin"
+          >
+        </div>
+
+        <div>
+          <label for="login-password" class="label">Password</label>
+          <input
+            type="password"
+            id="login-password"
+            name="password"
+            class="input"
+            autocomplete="current-password"
+            required
+            placeholder="••••••••"
+          >
+        </div>
+
+        <button type="submit" class="btn-primary" style="width: 100%; margin-top: 8px;">
+          Sign In
+        </button>
+      </form>
+
+      <!-- Subtle divider + security note -->
+      <div style="
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      ">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0; opacity: 0.4;">
+          <path d="M6 1L9.5 2.5V6C9.5 8 6 11 6 11C6 11 2.5 8 2.5 6V2.5L6 1Z" stroke="#888" stroke-width="1" fill="none"/>
+        </svg>
+        <span style="font-size: 11px; color: var(--muted);">
+          Session protected with CSRF and rate limiting
+        </span>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <p style="text-align: center; font-size: 11px; color: var(--muted); margin-top: 24px; letter-spacing: 0.04em;">
+      <?= e((string) \App\Core\Config::get('APP_NAME', 'Gym Attendance Checker')) ?>
+    </p>
+
+  </div>
 </main>
+
 <?php require __DIR__ . '/../partials/foot.php'; ?>
