@@ -70,7 +70,7 @@ require __DIR__ . '/../partials/nav.php';
       </div>
     </aside>
     <!-- ── MAIN: Scanner + Result ── -->
-    <div class="order-1 lg:order-2" style="display: grid; gap: 16px;" class="lg:grid-cols-2">
+    <div class="order-1 lg:order-2 lg:grid-cols-2" style="display: grid; gap: 16px;">
       <!-- Live Scanner panel -->
       <div class="card" style="padding: 20px 24px;">
         <div style="
@@ -81,11 +81,11 @@ require __DIR__ . '/../partials/nav.php';
             <h2 style="font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 0.12em; color: var(--white); margin: 0 0 2px;">Live Scanner</h2>
             <p style="font-size: 13px; color: var(--muted); margin: 0;">Point camera at member QR to record check-in.</p>
           </div>
-          <!-- scan.js replaces className on init, so initial class just provides a fallback shape -->
           <button
             id="toggleScan"
+            class="btn-primary"
             aria-pressed="false"
-            style="flex-shrink: 0;"
+            style="flex-shrink: 0; height: 40px; padding: 0 20px; font-size: 12px;"
           >Start Scan</button>
         </div>
         <div style="

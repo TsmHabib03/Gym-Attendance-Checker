@@ -24,16 +24,16 @@ require __DIR__ . '/../partials/head.php';
       <img
         src="<?= e(asset('img/repcore-removebg-preview.png')) ?>"
         alt="Gym Rep Core"
-        style="height: 72px; width: auto; display: block; margin: 0 auto 20px;"
+        style="height: 130px; width: auto; display: block; margin: 0 auto 16px;"
       >
       <h1 style="
         font-family: 'Bebas Neue', sans-serif;
-        font-size: 32px;
-        letter-spacing: 0.15em;
+        font-size: 38px;
+        letter-spacing: 0.18em;
         color: var(--white);
         line-height: 1;
         margin: 0 0 6px;
-      "><?= e((string) \App\Core\Config::get('APP_NAME', 'Gym Attendance')) ?></h1>
+      "><?= e((string) \App\Core\Config::get('APP_NAME', 'REP CORE FITNESS')) ?></h1>
       <p style="font-size: 12px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin: 0;">
         Admin Control Room
       </p>

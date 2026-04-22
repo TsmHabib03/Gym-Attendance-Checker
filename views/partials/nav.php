@@ -27,7 +27,7 @@ $navLinks = [
     max-width: 1280px;
     margin: 0 auto;
     padding: 0 16px;
-    height: 60px;
+    height: 72px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -43,16 +43,16 @@ $navLinks = [
     ">
       <img
         src="<?= e(asset('img/repcorelogo1-removebg-preview.png')) ?>"
-        alt="Gym Rep Core"
-        style="height: 36px; width: auto; display: block; flex-shrink: 0;"
+        alt="Rep Core Fitness"
+        style="height: 56px; width: auto; display: block; flex-shrink: 0;"
       >
       <span style="
         font-family: 'Bebas Neue', sans-serif;
-        font-size: 18px;
-        letter-spacing: 0.12em;
+        font-size: 20px;
+        letter-spacing: 0.14em;
         color: var(--white);
         line-height: 1;
-      "><?= e((string) \App\Core\Config::get('APP_NAME', 'Gym Attendance')) ?></span>
+      "><?= e((string) \App\Core\Config::get('APP_NAME', 'REP CORE FITNESS')) ?></span>
     </a>
 
     <?php if ($auth): ?>

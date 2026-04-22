@@ -18,6 +18,38 @@ foreach ($members as $member) {
 require __DIR__ . '/../partials/head.php';
 require __DIR__ . '/../partials/nav.php';
 ?>
+
+<!-- ── PHOTO LIGHTBOX MODAL ── -->
+<div id="photoLightbox" style="
+  display: none;
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.88);
+  align-items: center; justify-content: center;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+" role="dialog" aria-modal="true" aria-label="Member Photo">
+  <div style="position: relative; max-width: 480px; width: 90%;">
+    <button id="lightboxClose" style="
+      position: absolute; top: -44px; right: 0;
+      width: 36px; height: 36px;
+      background: var(--raised); border: 1px solid var(--border);
+      border-radius: 2px; cursor: pointer;
+      color: var(--dim); font-size: 18px; font-weight: 300;
+      display: flex; align-items: center; justify-content: center;
+    " aria-label="Close">✕</button>
+    <img id="lightboxImg" src="" alt="Member Photo" style="
+      width: 100%; max-height: 70vh; object-fit: contain;
+      border-radius: 2px; border: 1px solid var(--border);
+      display: block;
+    ">
+    <p id="lightboxName" style="
+      text-align: center; margin-top: 12px;
+      font-family: 'Bebas Neue', sans-serif; font-size: 18px;
+      letter-spacing: 0.12em; color: var(--white);
+    "></p>
+  </div>
+</div>
+
 <div class="page-enter" style="max-width: 1280px; margin: 0 auto; padding: 32px 16px 64px;">
   <!-- Page header -->
   <div style="margin-bottom: 32px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
@@ -72,6 +104,7 @@ require __DIR__ . '/../partials/nav.php';
       <div class="card" style="padding: 16px 20px;">
         <p style="font-size: 12px; color: var(--muted); line-height: 1.7; margin: 0;">
           Manage member records, renewal health, and profile updates in one focused view.
+          Click a member photo to view it full-size.
         </p>
       </div>
     </aside>
@@ -119,14 +152,18 @@ require __DIR__ . '/../partials/nav.php';
               $isActive   = (new DateTimeImmutable((string) $member['membership_end_date'])) >= new DateTimeImmutable('today');
               $status      = $isActive ? 'Active' : 'Expired';
               $statusClass = $isActive ? 'stat-badge stat-badge-ok' : 'stat-badge stat-badge-danger';
-              $photoSrc    = !empty($member['photo_path']) ? url((string) $member['photo_path']) : 'https://placehold.co/48x48?text=GYM';
+              $photoSrc    = !empty($member['photo_path']) ? url((string) $member['photo_path']) : 'https://placehold.co/48x48?text=RCF';
               ?>
               <div style="padding: 16px 24px; border-bottom: 1px solid var(--border);">
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
                   <img
                     src="<?= e($photoSrc) ?>"
                     alt="Member photo"
-                    style="width: 48px; height: 48px; border-radius: 2px; object-fit: cover; border: 1px solid var(--border); flex-shrink: 0;"
+                    data-fullsrc="<?= e($photoSrc) ?>"
+                    data-name="<?= e($member['full_name']) ?>"
+                    class="member-photo-thumb"
+                    style="width: 56px; height: 56px; border-radius: 2px; object-fit: cover; border: 1px solid var(--border); flex-shrink: 0; cursor: pointer; transition: border-color 0.15s, opacity 0.15s;"
+                    title="Click to view full photo"
                   >
                   <div style="min-width: 0; flex: 1;">
                     <p style="font-size: 14px; font-weight: 600; color: var(--near); margin: 0 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
@@ -161,9 +198,10 @@ require __DIR__ . '/../partials/nav.php';
         </div>
         <!-- Desktop table (hidden on mobile) -->
         <div style="overflow-x: auto;" class="hidden md:block">
-          <table class="data-table" style="min-width: 600px;">
+          <table class="data-table" style="min-width: 620px;">
             <thead>
               <tr>
+                <th>Photo</th>
                 <th>Member</th>
                 <th>Membership End</th>
                 <th>Status</th>
@@ -172,32 +210,50 @@ require __DIR__ . '/../partials/nav.php';
             </thead>
             <tbody>
               <?php if (count($members) === 0): ?>
-                <tr><td colspan="4" style="text-align: center; padding: 40px; color: var(--muted);">No members found.</td></tr>
+                <tr><td colspan="5" style="text-align: center; padding: 40px; color: var(--muted);">No members found.</td></tr>
               <?php else: ?>
                 <?php foreach ($members as $member): ?>
                   <?php
                   $isActive   = (new DateTimeImmutable((string) $member['membership_end_date'])) >= new DateTimeImmutable('today');
                   $status      = $isActive ? 'Active' : 'Expired';
                   $statusClass = $isActive ? 'stat-badge stat-badge-ok' : 'stat-badge stat-badge-danger';
-                  $photoSrc    = !empty($member['photo_path']) ? url((string) $member['photo_path']) : 'https://placehold.co/48x48?text=GYM';
+                  $photoSrc    = !empty($member['photo_path']) ? url((string) $member['photo_path']) : 'https://placehold.co/64x64?text=RCF';
                   ?>
                   <tr>
-                    <td>
-                      <div style="display: flex; align-items: center; gap: 12px;">
+                    <td style="width: 64px; padding: 10px 12px 10px 16px;">
+                      <div style="position: relative; width: 52px; height: 52px;">
                         <img
                           src="<?= e($photoSrc) ?>"
-                          alt="Member photo"
-                          style="width: 40px; height: 40px; border-radius: 2px; object-fit: cover; border: 1px solid var(--border); flex-shrink: 0;"
+                          alt="<?= e($member['full_name']) ?>"
+                          data-fullsrc="<?= e($photoSrc) ?>"
+                          data-name="<?= e($member['full_name']) ?>"
+                          class="member-photo-thumb"
+                          style="width: 52px; height: 52px; border-radius: 2px; object-fit: cover; border: 1px solid var(--border); cursor: pointer; display: block; transition: border-color 0.15s, opacity 0.15s;"
+                          title="Click to view full photo"
                         >
-                        <div>
-                          <span style="font-size: 13px; font-weight: 500; color: var(--light); display: block;">
-                            <?= e($member['full_name']) ?>
-                          </span>
-                          <span style="font-size: 11px; color: var(--muted);">
-                            <?= e($member['member_code']) ?>
-                          </span>
+                        <!-- View icon overlay -->
+                        <div style="
+                          position: absolute; inset: 0;
+                          background: rgba(0,0,0,0.45);
+                          border-radius: 2px;
+                          display: flex; align-items: center; justify-content: center;
+                          opacity: 0; transition: opacity 0.15s;
+                          pointer-events: none;
+                        " class="photo-overlay">
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <circle cx="8" cy="8" r="4" stroke="white" stroke-width="1.5"/>
+                            <circle cx="8" cy="8" r="1.5" fill="white"/>
+                          </svg>
                         </div>
                       </div>
+                    </td>
+                    <td>
+                      <span style="font-size: 13px; font-weight: 500; color: var(--light); display: block;">
+                        <?= e($member['full_name']) ?>
+                      </span>
+                      <span style="font-size: 11px; color: var(--muted);">
+                        <?= e($member['member_code']) ?>
+                      </span>
                     </td>
                     <td style="color: var(--dim); font-size: 13px;">
                       <?= e($member['membership_end_date']) ?>
@@ -217,6 +273,7 @@ require __DIR__ . '/../partials/nav.php';
                             onclick="return confirm('Delete this member? This action cannot be undone.');"
                           >Delete</button>
                         </form>
+                      </div>
                     </td>
                   </tr>
                 <?php endforeach; ?>
@@ -228,4 +285,49 @@ require __DIR__ . '/../partials/nav.php';
     </div>
   </div>
 </div>
+
+<!-- Lightbox script -->
+<script>
+(function () {
+  var lightbox  = document.getElementById('photoLightbox');
+  var lbImg     = document.getElementById('lightboxImg');
+  var lbName    = document.getElementById('lightboxName');
+  var lbClose   = document.getElementById('lightboxClose');
+
+  function openLightbox(src, name) {
+    lbImg.src = src;
+    lbName.textContent = name || '';
+    lightbox.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeLightbox() {
+    lightbox.style.display = 'none';
+    document.body.style.overflow = '';
+    lbImg.src = '';
+  }
+
+  document.querySelectorAll('.member-photo-thumb').forEach(function (img) {
+    img.addEventListener('click', function () {
+      openLightbox(img.dataset.fullsrc || img.src, img.dataset.name || '');
+    });
+    // Hover overlay effect
+    var wrapper = img.parentElement;
+    var overlay = wrapper ? wrapper.querySelector('.photo-overlay') : null;
+    if (overlay) {
+      wrapper.addEventListener('mouseenter', function () { overlay.style.opacity = '1'; });
+      wrapper.addEventListener('mouseleave', function () { overlay.style.opacity = '0'; });
+    }
+  });
+
+  if (lbClose)  lbClose.addEventListener('click', closeLightbox);
+  lightbox.addEventListener('click', function (e) {
+    if (e.target === lightbox) closeLightbox();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeLightbox();
+  });
+})();
+</script>
+
 <?php require __DIR__ . '/../partials/foot.php'; ?>

@@ -122,22 +122,43 @@ require __DIR__ . '/../partials/nav.php';
         <!-- Current photo + replace -->
         <div style="background: var(--raised); border: 1px solid var(--border); border-radius: 2px; padding: 16px;">
           <p class="label" style="margin-bottom: 12px;">Profile Photo</p>
-          <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-            <img
-              src="<?= e($currentPhotoSrc) ?>"
-              alt="Current photo"
-              style="width: 80px; height: 80px; border-radius: 2px; object-fit: cover; border: 1px solid var(--border); flex-shrink: 0;"
-            >
-            <div style="flex: 1; min-width: 160px;">
-              <label for="edit-photo" class="label">Replace Photo (optional)</label>
-              <input
-                id="edit-photo"
-                type="file"
-                name="photo"
-                accept="image/png,image/jpeg,image/webp"
-                class="input"
-                style="padding-top: 10px; height: auto; line-height: 1.4;"
+          <div style="display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
+            <!-- Clickable current photo -->
+            <div style="position: relative; flex-shrink: 0;">
+              <img
+                id="editPhotoPreview"
+                src="<?= e($currentPhotoSrc) ?>"
+                alt="Current photo"
+                data-fullsrc="<?= e($currentPhotoSrc) ?>"
+                data-name="<?= e((string) $member['full_name']) ?>"
+                style="
+                  width: 100px; height: 100px; border-radius: 2px; object-fit: cover;
+                  border: 1px solid var(--border); cursor: pointer; display: block;
+                  transition: border-color 0.15s;
+                "
+                title="Click to view full photo"
+                onclick="openEditLightbox(this.dataset.fullsrc, this.dataset.name)"
               >
+              <div style="
+                margin-top: 6px; text-align: center;
+                font-size: 10px; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase;
+              ">Click to view</div>
+            </div>
+            <div style="flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 12px;">
+              <div>
+                <label for="edit-photo" class="label">Replace Photo (optional)</label>
+                <input
+                  id="edit-photo"
+                  type="file"
+                  name="photo"
+                  accept="image/png,image/jpeg,image/webp"
+                  class="input"
+                  style="padding-top: 10px; height: auto; line-height: 1.4;"
+                >
+              </div>
+              <p style="font-size: 11px; color: var(--muted); margin: 0; line-height: 1.6;">
+                Upload a new photo to replace the current one. Accepted: JPG, PNG, WebP.
+              </p>
             </div>
           </div>
         </div>
@@ -159,4 +180,55 @@ require __DIR__ . '/../partials/nav.php';
     </section>
   </div>
 </div>
+<!-- Edit page photo lightbox modal -->
+<div id="editPhotoLightbox" style="
+  display: none;
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.88);
+  align-items: center; justify-content: center;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+" role="dialog" aria-modal="true" aria-label="Member Photo">
+  <div style="position: relative; max-width: 480px; width: 90%;">
+    <button onclick="closeEditLightbox()" style="
+      position: absolute; top: -44px; right: 0;
+      width: 36px; height: 36px;
+      background: var(--raised); border: 1px solid var(--border);
+      border-radius: 2px; cursor: pointer;
+      color: var(--dim); font-size: 18px; font-weight: 300;
+      display: flex; align-items: center; justify-content: center;
+    " aria-label="Close">✕</button>
+    <img id="editLightboxImg" src="" alt="Member Photo" style="
+      width: 100%; max-height: 70vh; object-fit: contain;
+      border-radius: 2px; border: 1px solid var(--border); display: block;
+    ">
+    <p id="editLightboxName" style="
+      text-align: center; margin-top: 12px;
+      font-family: 'Bebas Neue', sans-serif; font-size: 18px;
+      letter-spacing: 0.12em; color: var(--white);
+    "></p>
+  </div>
+</div>
+<script>
+function openEditLightbox(src, name) {
+  document.getElementById('editLightboxImg').src = src || '';
+  document.getElementById('editLightboxName').textContent = name || '';
+  var lb = document.getElementById('editPhotoLightbox');
+  lb.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeEditLightbox() {
+  var lb = document.getElementById('editPhotoLightbox');
+  lb.style.display = 'none';
+  document.body.style.overflow = '';
+  document.getElementById('editLightboxImg').src = '';
+}
+document.getElementById('editPhotoLightbox').addEventListener('click', function (e) {
+  if (e.target === this) closeEditLightbox();
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') closeEditLightbox();
+});
+</script>
+
 <?php require __DIR__ . '/../partials/foot.php'; ?>

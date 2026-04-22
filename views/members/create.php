@@ -194,28 +194,17 @@ require __DIR__ . '/../partials/nav.php';
           </div>
         </div>
         <!-- Camera controls -->
-        <div style="
-          display: grid; gap: 8px; margin-top: 16px;
-          grid-template-columns: 1fr;
-        " class="sm:grid-cols-[1fr_auto_auto_auto]">
+        <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 10px;">
           <div>
             <label for="cameraDevice" class="label" style="margin-bottom: 4px;">Camera Device</label>
-            <select
-              id="cameraDevice"
-              class="input"
-              disabled
-            >
+            <select id="cameraDevice" class="input" disabled>
               <option value="">Default camera</option>
             </select>
           </div>
-          <div style="display: flex; align-items: flex-end;">
-            <button type="button" id="cameraOpen"    class="btn-ghost"    style="height: 44px; font-size: 12px; white-space: nowrap;">Open</button>
-          </div>
-          <div style="display: flex; align-items: flex-end;">
-            <button type="button" id="cameraCapture" class="btn-primary"  style="height: 44px; font-size: 12px; white-space: nowrap;" disabled>Capture</button>
-          </div>
-          <div style="display: flex; align-items: flex-end;">
-            <button type="button" id="cameraClose"   class="btn-ghost"    style="height: 44px; font-size: 12px; white-space: nowrap;" disabled>Close</button>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            <button type="button" id="cameraOpen"    class="btn-ghost"    style="height: 44px; padding: 0 20px; font-size: 12px; white-space: nowrap;">Open Camera</button>
+            <button type="button" id="cameraCapture" class="btn-primary"  style="height: 44px; padding: 0 20px; font-size: 12px; white-space: nowrap;" disabled>Capture Photo</button>
+            <button type="button" id="cameraClose"   class="btn-ghost"    style="height: 44px; padding: 0 20px; font-size: 12px; white-space: nowrap;" disabled>Close Camera</button>
           </div>
         </div>
       </div>
