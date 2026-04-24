@@ -98,6 +98,7 @@ require __DIR__ . '/../partials/nav.php';
         <div style="display: flex; flex-direction: column; gap: 8px;">
           <a href="<?= e(url('/members/create')) ?>" class="btn-primary"  style="width: 100%;">+ Add New Member</a>
           <a href="<?= e(url('/attendance/scan')) ?>"  class="btn-ghost"   style="width: 100%;">Open Scanner</a>
+          <a href="<?= e(url('/members/qr-bulk')) ?>" class="btn-ghost"   style="width: 100%;">Print All QR Cards</a>
         </div>
       </div>
       <!-- Info note -->

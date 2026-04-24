@@ -21,6 +21,7 @@ final class AlertService
     {
         $appName = (string) Config::get('APP_NAME', 'REP CORE FITNESS');
         $appUrl  = rtrim((string) Config::get('APP_URL', ''), '/');
+        $logoUrl = 'cid:logo';
 
         $subject = '[' . $appName . '] Expired Membership Scan Alert';
 
@@ -31,6 +32,7 @@ final class AlertService
             'scannedAt'  => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
             'appName'    => $appName,
             'appUrl'     => $appUrl,
+            'logoUrl'    => $logoUrl,
         ]);
 
         $plainBody = sprintf(
@@ -55,6 +57,69 @@ final class AlertService
         );
     }
 
+    public function sendCheckInAlert(array $member): void
+    {
+        $email = (string) ($member['email'] ?? '');
+        if ($email === '') {
+            return;
+        }
+
+        $appName = (string) Config::get('APP_NAME', 'REP CORE FITNESS');
+        $appUrl  = rtrim((string) Config::get('APP_URL', ''), '/');
+        $logoUrl = 'cid:logo';
+
+        $subject = '[' . $appName . '] Check-In Confirmation';
+
+        $memberPhotoUrl = '';
+        $extraImages    = [];
+        if (!empty($member['photo_path'])) {
+            $photoFullPath = dirname(__DIR__, 2) . '/public' . $member['photo_path'];
+            if (is_file($photoFullPath)) {
+                $memberPhotoUrl = 'cid:memberphoto';
+                $extraImages[] = [
+                    'path' => $photoFullPath,
+                    'cid'  => 'memberphoto',
+                    'name' => 'member_photo.png',
+                ];
+            }
+        }
+
+        $htmlBody = $this->renderTemplate('checkin_alert', [
+            'memberName'     => $member['full_name'] ?? 'Unknown',
+            'memberCode'     => $member['member_code'] ?? '—',
+            'checkInDate'    => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+            'expiryDate'     => $member['membership_end_date'] ?? '—',
+            'appName'        => $appName,
+            'appUrl'         => $appUrl,
+            'logoUrl'        => $logoUrl,
+            'memberPhotoUrl' => $memberPhotoUrl,
+        ]);
+
+        $plainBody = sprintf(
+            "Hi %s,\n\n"
+            . "You have successfully checked in at %s.\n"
+            . "Member code: %s\n"
+            . "Check-in time: %s\n"
+            . "Membership expires: %s\n\n"
+            . "— %s",
+            $member['full_name'] ?? 'Unknown',
+            $appName,
+            $member['member_code'] ?? '—',
+            (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+            $member['membership_end_date'] ?? '—',
+            $appName
+        );
+
+        $this->send(
+            $email,
+            $subject,
+            $htmlBody,
+            $plainBody,
+            ['event_type' => 'checkin_alert', 'member_id' => $member['id'] ?? null],
+            $extraImages
+        );
+    }
+
     public function sendExpiryReminders(int $days): int
     {
         $pdo  = Database::connection();
@@ -74,6 +139,7 @@ final class AlertService
 
         $appName = (string) Config::get('APP_NAME', 'REP CORE FITNESS');
         $appUrl  = rtrim((string) Config::get('APP_URL', ''), '/');
+        $logoUrl = 'cid:logo';
         $count   = 0;
 
         foreach ($stmt->fetchAll() as $member) {
@@ -90,6 +156,7 @@ final class AlertService
                 'daysUntilExpiry' => $daysLeft,
                 'appName'         => $appName,
                 'appUrl'          => $appUrl,
+                'logoUrl'         => $logoUrl,
             ]);
 
             $plainBody = sprintf(
@@ -151,7 +218,8 @@ final class AlertService
         string $subject,
         string $htmlBody,
         string $plainBody,
-        array  $context
+        array  $context,
+        array  $extraImages = []
     ): bool {
         $mail  = new PHPMailer(true);
         $sent  = false;
@@ -175,6 +243,25 @@ final class AlertService
             $mail->Subject  = $subject;
             $mail->CharSet  = 'UTF-8';
             $mail->Encoding = 'base64';
+
+            $logoPath = dirname(__DIR__, 2) . '/public/assets/img/repcore-removebg-preview.png';
+            if (is_file($logoPath)) {
+                try {
+                    $mail->addEmbeddedImage($logoPath, 'logo', 'logo.png');
+                } catch (\Throwable) {
+                    // silently ignore if logo embedding fails
+                }
+            }
+
+            foreach ($extraImages as $img) {
+                if (!empty($img['path']) && is_file($img['path'])) {
+                    try {
+                        $mail->addEmbeddedImage($img['path'], $img['cid'], $img['name'] ?? basename($img['path']));
+                    } catch (\Throwable) {
+                        // ignore single image failure
+                    }
+                }
+            }
 
             if ($htmlBody !== '') {
                 $mail->isHTML(true);

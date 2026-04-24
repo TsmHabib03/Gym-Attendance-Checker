@@ -125,6 +125,18 @@ final class MemberController
         ]);
     }
 
+    public function qrBulk(): void
+    {
+        Auth::requireAdmin();
+
+        $members = $this->members->list();
+
+        View::render('members/qr_bulk', [
+            'members' => $members,
+            'csrfToken' => Csrf::token(),
+        ]);
+    }
+
     public function update(): void
     {
         Auth::requireAdmin();

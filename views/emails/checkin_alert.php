@@ -1,15 +1,16 @@
 <?php
 /**
- * Email template: Membership Expiry Reminder
+ * Email template: Check-In Success Alert (Member)
  *
  * Available variables:
  *   $memberName         string
  *   $memberCode         string
+ *   $checkInDate        string
  *   $expiryDate         string
- *   $daysUntilExpiry    int
  *   $appName            string
  *   $appUrl             string
  *   $logoUrl            string
+ *   $memberPhotoUrl     string
  */
 declare(strict_types=1);
 ?><!DOCTYPE html>
@@ -18,7 +19,7 @@ declare(strict_types=1);
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Membership Expiry Reminder — <?= htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') ?></title>
+  <title>Check-In Confirmation — <?= htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') ?></title>
   <style>
     body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
@@ -26,6 +27,7 @@ declare(strict_types=1);
     body { height: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #0a0a0a; }
     a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; font-size: inherit !important; font-family: inherit !important; font-weight: inherit !important; line-height: inherit !important; }
     @media screen and (max-width: 600px) {
+      .bento-col { display: block !important; width: 100% !important; padding-left: 0 !important; padding-right: 0 !important; border: none !important; }
       .logo-img { height: 72px !important; }
     }
   </style>
@@ -48,15 +50,15 @@ declare(strict_types=1);
                   <?php if (!empty($logoUrl)): ?>
                     <img src="<?= htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') ?>" class="logo-img" style="height:100px; width:auto; border-radius:2px; border:1px solid #333333; display:block;">
                   <?php else: ?>
-                    <div style="width:100px; height:100px; background:#1a1a1a; border-radius:2px; border:1px solid #333333; text-align:center;">
-                      <span style="font-size:10px; color:#555; text-transform:uppercase; line-height:100px;">Logo</span>
+                    <div style="width:100px; height:100px; background:#1a1a1a; border-radius:2px; border:1px solid #333333; display:flex; align-items:center; justify-content:center;">
+                      <span style="font-size:10px; color:#555; text-transform:uppercase;">Logo</span>
                     </div>
                   <?php endif; ?>
                 </td>
                 <td valign="middle">
-                  <p style="font-size:11px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:#777777; margin:0 0 6px;">Membership Alert</p>
+                  <p style="font-size:11px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:#777777; margin:0 0 6px;">Check-In Confirmation</p>
                   <p style="font-size:22px; font-weight:700; color:#ffffff; margin:0 0 4px; line-height:1.2;">Hi <?= htmlspecialchars($memberName, ENT_QUOTES, 'UTF-8') ?>,</p>
-                  <p style="font-size:13px; color:#aaaaaa; margin:0; line-height:1.5;">Your membership expires in <strong style="color:#ffffff;"><?= (int) $daysUntilExpiry ?> day<?= $daysUntilExpiry !== 1 ? 's' : '' ?></strong>.</p>
+                  <p style="font-size:13px; color:#aaaaaa; margin:0; line-height:1.5;">You have successfully checked in at <strong style="color:#ffffff;"><?= htmlspecialchars($appName, ENT_QUOTES, 'UTF-8') ?></strong>.</p>
                 </td>
               </tr>
             </table>
@@ -70,63 +72,52 @@ declare(strict_types=1);
           </td>
         </tr>
 
-        <!-- DETAILS -->
+        <!-- BENTO: Photo + Details -->
         <tr>
           <td style="padding:20px 24px;">
-            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#1a1a1a; border:1px solid #2a2a2a; border-radius:2px; overflow:hidden;">
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
               <tr>
-                <td style="padding:14px 16px; border-bottom:1px solid #222222;">
-                  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-                    <tr>
-                      <td style="font-size:11px; font-weight:600; letter-spacing:0.10em; text-transform:uppercase; color:#555555;">Member</td>
-                      <td align="right" style="font-size:13px; font-weight:600; color:#eeeeee;"><?= htmlspecialchars($memberName, ENT_QUOTES, 'UTF-8') ?></td>
-                    </tr>
-                  </table>
+                <!-- Photo -->
+                <td class="bento-col" width="45%" valign="top" style="padding-right:16px;">
+                  <?php if (!empty($memberPhotoUrl)): ?>
+                    <img src="<?= htmlspecialchars($memberPhotoUrl, ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($memberName, ENT_QUOTES, 'UTF-8') ?>" style="width:100%; height:220px; object-fit:cover; border-radius:2px; border:1px solid #333333; display:block;">
+                  <?php else: ?>
+                    <div style="width:100%; height:220px; background:#0f0f0f; border-radius:2px; border:1px solid #333333; text-align:center;">
+                      <p style="font-size:13px; color:#555555; margin:0; padding-top:100px;">No photo</p>
+                    </div>
+                  <?php endif; ?>
                 </td>
-              </tr>
-              <tr>
-                <td style="padding:14px 16px; border-bottom:1px solid #222222;">
-                  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                <!-- Details -->
+                <td class="bento-col" width="55%" valign="top">
+                  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#1a1a1a; border:1px solid #2a2a2a; border-radius:2px; overflow:hidden;">
                     <tr>
-                      <td style="font-size:11px; font-weight:600; letter-spacing:0.10em; text-transform:uppercase; color:#555555;">Member Code</td>
-                      <td align="right" style="font-size:13px; font-weight:600; color:#eeeeee; font-family:'Courier New', monospace;"><?= htmlspecialchars($memberCode, ENT_QUOTES, 'UTF-8') ?></td>
+                      <td style="padding:14px 16px; border-bottom:1px solid #222222;">
+                        <p style="font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#555555; margin:0 0 4px;">Member Name</p>
+                        <p style="font-size:14px; font-weight:600; color:#eeeeee; margin:0;"><?= htmlspecialchars($memberName, ENT_QUOTES, 'UTF-8') ?></p>
+                      </td>
                     </tr>
-                  </table>
-                </td>
-              </tr>
-              <tr>
-                <td style="padding:14px 16px; border-bottom:1px solid #222222;">
-                  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                     <tr>
-                      <td style="font-size:11px; font-weight:600; letter-spacing:0.10em; text-transform:uppercase; color:#555555;">Expiry Date</td>
-                      <td align="right" style="font-size:13px; font-weight:700; color:#cccccc;"><?= htmlspecialchars($expiryDate, ENT_QUOTES, 'UTF-8') ?></td>
+                      <td style="padding:14px 16px; border-bottom:1px solid #222222;">
+                        <p style="font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#555555; margin:0 0 4px;">Member Code</p>
+                        <p style="font-size:14px; font-weight:600; color:#eeeeee; margin:0; font-family:'Courier New', monospace;"><?= htmlspecialchars($memberCode, ENT_QUOTES, 'UTF-8') ?></p>
+                      </td>
                     </tr>
-                  </table>
-                </td>
-              </tr>
-              <tr>
-                <td style="padding:14px 16px;">
-                  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                     <tr>
-                      <td style="font-size:11px; font-weight:600; letter-spacing:0.10em; text-transform:uppercase; color:#555555;">Days Remaining</td>
-                      <td align="right">
-                        <span style="display:inline-block; padding:3px 10px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); border-radius:2px; font-size:12px; font-weight:700; color:#cccccc;"><?= (int) $daysUntilExpiry ?> day<?= $daysUntilExpiry !== 1 ? 's' : '' ?></span>
+                      <td style="padding:14px 16px; border-bottom:1px solid #222222;">
+                        <p style="font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#555555; margin:0 0 4px;">Check-In Time</p>
+                        <p style="font-size:14px; font-weight:600; color:#ffffff; margin:0;"><?= htmlspecialchars($checkInDate, ENT_QUOTES, 'UTF-8') ?></p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:14px 16px;">
+                        <p style="font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#555555; margin:0 0 4px;">Membership Expires</p>
+                        <p style="font-size:14px; font-weight:700; color:#cccccc; margin:0;"><?= htmlspecialchars($expiryDate, ENT_QUOTES, 'UTF-8') ?></p>
                       </td>
                     </tr>
                   </table>
                 </td>
               </tr>
             </table>
-          </td>
-        </tr>
-
-        <!-- CTA -->
-        <tr>
-          <td style="padding:0 24px 24px; text-align:center;">
-            <p style="font-size:14px; color:#888888; margin:0 0 20px; line-height:1.6;">
-              Visit the gym front desk or contact us to renew your membership before it expires.
-            </p>
-            <a href="<?= htmlspecialchars($appUrl, ENT_QUOTES, 'UTF-8') ?>" style="display:inline-block; padding:14px 36px; background-color:#ffffff; color:#0a0a0a; font-size:13px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; text-decoration:none; border-radius:2px;">Renew Membership</a>
           </td>
         </tr>
 

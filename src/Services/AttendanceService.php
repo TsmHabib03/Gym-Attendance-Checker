@@ -84,6 +84,10 @@ final class AttendanceService
             $this->alerts->sendExpiredScanAlert($member);
         }
 
+        if ($scanStatus === 'accepted') {
+            $this->alerts->sendCheckInAlert($member);
+        }
+
         return [
             'member' => [
                 'id' => (int) $member['id'],

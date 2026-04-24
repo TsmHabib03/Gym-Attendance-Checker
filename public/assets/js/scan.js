@@ -19,7 +19,12 @@
     return;
   }
 
-  const codeReader = new ZXing.BrowserMultiFormatReader();
+  // Optimize: restrict to QR code only for much faster detection
+  const hints = new Map();
+  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.QR_CODE]);
+  hints.set(ZXing.DecodeHintType.TRY_HARDER, false);
+
+  const codeReader = new ZXing.BrowserMultiFormatReader(hints);
   let isScanning = false;
   let processing = false;
   let scanCooldown = false;
@@ -31,25 +36,27 @@
 
     if (TOKEN_PATTERN.test(text)) return text.toLowerCase();
 
-    try {
-      const payload = JSON.parse(text);
-      const tokenCandidates = [
-        payload?.qr_token,
-        payload?.token,
-        payload?.member?.qr_token,
-        payload?.member?.token,
-      ];
-      for (const candidate of tokenCandidates) {
-        const normalized = String(candidate || '').trim();
-        if (TOKEN_PATTERN.test(normalized)) return normalized.toLowerCase();
+    // Fast-path: only try JSON if it looks like JSON
+    if (text.startsWith('{') || text.startsWith('[')) {
+      try {
+        const payload = JSON.parse(text);
+        const tokenCandidates = [
+          payload?.qr_token,
+          payload?.token,
+          payload?.member?.qr_token,
+          payload?.member?.token,
+        ];
+        for (const candidate of tokenCandidates) {
+          const normalized = String(candidate || '').trim();
+          if (TOKEN_PATTERN.test(normalized)) return normalized.toLowerCase();
+        }
+      } catch (_error) {
+        // not JSON
       }
-    } catch (_error) {
-      return null;
     }
     return null;
   };
 
-  // Use system CSS classes (btn-primary / btn-danger) for consistent alignment
   const setToggleState = (active) => {
     toggleButton.textContent = active ? 'Stop Scan' : 'Start Scan';
     toggleButton.className = active ? 'btn-danger' : 'btn-primary';
@@ -68,7 +75,6 @@
     return appBasePath ? appBasePath + normalizedPath : normalizedPath;
   };
 
-  // Use inline styles matching the system's CSS variables
   const setStatus = (message, tone = 'neutral') => {
     statusText.textContent = message;
     const colors = {
@@ -92,7 +98,6 @@
     memberCode.textContent = data.member.member_code;
     membershipEnd.textContent = data.member.membership_end_date;
 
-    // Use system stat-badge classes
     const activeMembership = data.membership_status === 'Active';
     membershipStatus.className = activeMembership ? 'stat-badge stat-badge-ok' : 'stat-badge stat-badge-danger';
     membershipStatus.textContent = data.membership_status;
@@ -130,7 +135,7 @@
     if (!context) return null;
 
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL('image/jpeg', 0.8);
+    return canvas.toDataURL('image/jpeg', 0.75);
   };
 
   const sendCheckin = async (token) => {
@@ -168,10 +173,14 @@
         setStatus('Duplicate scan denied.', 'warning');
       }
 
+      // Faster cooldown: 1000ms instead of 2500ms
       scanCooldown = true;
-      window.setTimeout(() => { scanCooldown = false; }, 2500);
+      window.setTimeout(() => { scanCooldown = false; }, 1000);
     } catch (error) {
       setStatus(error.message || 'Unable to process check-in.', 'error');
+      // Shorter error cooldown
+      scanCooldown = true;
+      window.setTimeout(() => { scanCooldown = false; }, 800);
     } finally {
       processing = false;
     }
@@ -207,25 +216,19 @@
       };
 
       const isMobileViewport = window.matchMedia('(max-width: 767px)').matches;
+      // Use lower latency / faster constraints
       const constraints = {
         audio: false,
         video: {
           facingMode: { ideal: 'environment' },
-          width:  { ideal: isMobileViewport ? 640 : 1280 },
-          height: { ideal: isMobileViewport ? 640 : 720 },
-          aspectRatio: { ideal: isMobileViewport ? 1 : 16 / 9 },
+          width:  { ideal: isMobileViewport ? 720 : 1280 },
+          height: { ideal: isMobileViewport ? 720 : 720 },
+          aspectRatio: { ideal: 1 },
+          frameRate: { ideal: 30 },
         },
       };
 
-      if (typeof codeReader.decodeFromConstraints === 'function') {
-        try {
-          await codeReader.decodeFromConstraints(constraints, video, onDecode);
-        } catch (_constraintsError) {
-          await codeReader.decodeFromVideoDevice(null, video, onDecode);
-        }
-      } else {
-        await codeReader.decodeFromVideoDevice(null, video, onDecode);
-      }
+      await codeReader.decodeFromVideoDevice(undefined, video, onDecode, constraints);
 
       setStatus('Scanner active. Point camera at member QR.', 'success');
     } catch (error) {
@@ -251,3 +254,4 @@
     startScan();
   });
 })();
+

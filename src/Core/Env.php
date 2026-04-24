@@ -18,13 +18,29 @@ final class Env
         }
 
         $envPath = $rootPath . DIRECTORY_SEPARATOR . '.env';
-        if (!file_exists($envPath) && file_exists($rootPath . DIRECTORY_SEPARATOR . '.env.example')) {
-            copy($rootPath . DIRECTORY_SEPARATOR . '.env.example', $envPath);
+
+        // SECURITY: Never silently copy .env.example → .env. Missing configuration
+        // must fail loudly so production deployments cannot run with insecure
+        // placeholder secrets. Operators must explicitly provision a .env file.
+        if (!file_exists($envPath)) {
+            throw new RuntimeException(
+                'Missing .env file at ' . $envPath . '. Copy .env.example to .env and populate '
+                . 'real secrets before starting the application.'
+            );
         }
 
-        if (class_exists(Dotenv::class) && file_exists($envPath)) {
+        // Reject world-readable .env in non-Windows environments (basic hygiene).
+        if (DIRECTORY_SEPARATOR === '/' && function_exists('fileperms')) {
+            $perms = @fileperms($envPath);
+            if ($perms !== false && ($perms & 0o004) === 0o004) {
+                // Log only; do not abort — deployments may rely on root-owned files.
+                error_log('[SECURITY] .env file is world-readable: ' . $envPath);
+            }
+        }
+
+        if (class_exists(Dotenv::class)) {
             Dotenv::createImmutable($rootPath)->safeLoad();
-        } elseif (file_exists($envPath)) {
+        } else {
             self::loadManually($envPath);
         }
 

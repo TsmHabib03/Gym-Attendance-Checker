@@ -82,6 +82,11 @@ try {
         return;
     }
 
+    if ($method === 'GET' && $path === '/members/qr-bulk') {
+        $memberController->qrBulk();
+        return;
+    }
+
     if ($method === 'POST' && $path === '/members/edit') {
         $memberController->update();
         return;
