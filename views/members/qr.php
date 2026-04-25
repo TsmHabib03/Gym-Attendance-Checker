@@ -7,7 +7,7 @@ $dashboardShell = true;
 
 $photoSrc = !empty($member['photo_path'])
     ? url((string) $member['photo_path'])
-    : 'https://placehold.co/96x96/111111/555555?text=RCF';
+    : url('/assets/img/placeholder-member.svg');
 
 $membershipActive = (new DateTimeImmutable((string) $member['membership_end_date'])) >= new DateTimeImmutable('today');
 $membershipStatus = $membershipActive ? 'Active' : 'Expired';
@@ -54,7 +54,7 @@ require __DIR__ . '/../partials/nav.php';
     </div>
     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
       <a href="<?= e(url('/members')) ?>" class="btn-ghost" style="height: 38px; font-size: 11px;">← Members</a>
-      <button type="button" onclick="window.print()" class="btn-primary" style="height: 38px; font-size: 11px;">🖨 Print Card</button>
+      <button type="button" id="printCardBtn" class="btn-primary" style="height: 38px; font-size: 11px;">🖨 Print Card</button>
     </div>
   </div>
 
@@ -98,7 +98,7 @@ require __DIR__ . '/../partials/nav.php';
         <p class="label" style="margin-bottom: 12px;">Actions</p>
         <div style="display: flex; flex-direction: column; gap: 8px;">
           <a href="<?= e(url('/members')) ?>" class="btn-ghost" style="width: 100%; font-size: 12px;">← Back to Members</a>
-          <button type="button" onclick="window.print()" class="btn-primary" style="width: 100%; font-size: 12px;">🖨 Print QR Card</button>
+          <button type="button" id="printCardBtn2" class="btn-primary" style="width: 100%; font-size: 12px;">🖨 Print QR Card</button>
           <a id="downloadQrPng" href="#" class="btn-ghost" style="width: 100%; font-size: 12px; opacity: 0.5; pointer-events: none;">Download QR PNG</a>
           <button id="regenerateQrBtn" type="button" class="btn-ghost" style="width: 100%; font-size: 12px;">Regenerate QR</button>
         </div>
@@ -186,8 +186,8 @@ require __DIR__ . '/../partials/nav.php';
   </div><!-- /.grid -->
 </div><!-- /.page-enter -->
 
-<script src="<?= e(asset('lib/qrcode.min.js')) ?>"></script>
-<script>
+<script nonce="<?= e(csp_nonce()) ?>" src="<?= e(asset('lib/qrcode.min.js')) ?>"></script>
+<script nonce="<?= e(csp_nonce()) ?>">
 (() => {
   const memberId          = <?= json_encode((int) ($member['id'] ?? 0), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
   let   qrText            = <?= json_encode($qrTokenForRender, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
@@ -424,7 +424,7 @@ require __DIR__ . '/../partials/nav.php';
 .bcard-name {
   font-size: 9.5pt;
   font-weight: 700;
-  color: #22c55e;
+  color: #00d4ff;
   margin: 0 0 3px;
   letter-spacing: 0.02em;
   line-height: 1.2;
@@ -484,4 +484,12 @@ require __DIR__ . '/../partials/nav.php';
 }
 </style>
 
+<script nonce="<?= e(csp_nonce()) ?>">
+(function () {
+  ['printCardBtn', 'printCardBtn2'].forEach(function (id) {
+    var btn = document.getElementById(id);
+    if (btn) btn.addEventListener('click', function () { window.print(); });
+  });
+})();
+</script>
 <?php require __DIR__ . '/../partials/foot.php'; ?>

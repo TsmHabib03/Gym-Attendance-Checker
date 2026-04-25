@@ -2,6 +2,12 @@
 
 declare(strict_types=1);
 
+// Block web access: these scripts must only run from the command line.
+if (PHP_SAPI !== 'cli') {
+    http_response_code(403);
+    exit('Forbidden');
+}
+
 use App\Core\Config;
 use App\Services\AlertService;
 

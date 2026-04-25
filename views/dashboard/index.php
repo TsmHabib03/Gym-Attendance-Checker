@@ -434,13 +434,13 @@ require __DIR__ . '/../partials/nav.php';
 </div>
 
 <!-- ── LIVE UPDATE SCRIPT ────────────────────────────────── -->
-<script>
+<script nonce="<?= e(csp_nonce()) ?>">
 window.DASHBOARD_LIVE_CONFIG = {
-  endpoint: <?= json_encode(url('/dashboard?live=1'), JSON_UNESCAPED_SLASHES) ?>,
+  endpoint: <?= json_encode(url('/dashboard?live=1'), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
   refreshMs: 20000,
 };
 </script>
-<script>
+<script nonce="<?= e(csp_nonce()) ?>">
 (function () {
   var config = window.DASHBOARD_LIVE_CONFIG || {};
   if (!config.endpoint) return;

@@ -5,7 +5,29 @@ declare(strict_types=1);
 if (!function_exists('e')) {
     function e(string $value): string
     {
-        return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8');
+    }
+}
+
+if (!function_exists('e_attr')) {
+    /**
+     * Stricter escape for HTML attribute contexts. Use for any attribute that
+     * holds user-controlled data (data-*, title, alt, value).
+     */
+    function e_attr(string $value): string
+    {
+        return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8');
+    }
+}
+
+if (!function_exists('csp_nonce')) {
+    /**
+     * Per-request CSP nonce — emit this on every <script> tag we author so the
+     * strict CSP in public/index.php accepts it.
+     */
+    function csp_nonce(): string
+    {
+        return (string) ($GLOBALS['__CSP_NONCE'] ?? '');
     }
 }
 

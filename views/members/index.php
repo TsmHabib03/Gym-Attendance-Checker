@@ -153,7 +153,7 @@ require __DIR__ . '/../partials/nav.php';
               $isActive   = (new DateTimeImmutable((string) $member['membership_end_date'])) >= new DateTimeImmutable('today');
               $status      = $isActive ? 'Active' : 'Expired';
               $statusClass = $isActive ? 'stat-badge stat-badge-ok' : 'stat-badge stat-badge-danger';
-              $photoSrc    = !empty($member['photo_path']) ? url((string) $member['photo_path']) : 'https://placehold.co/48x48?text=RCF';
+              $photoSrc    = !empty($member['photo_path']) ? url((string) $member['photo_path']) : url('/assets/img/placeholder-member.svg');
               ?>
               <div style="padding: 16px 24px; border-bottom: 1px solid var(--border);">
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
@@ -218,7 +218,7 @@ require __DIR__ . '/../partials/nav.php';
                   $isActive   = (new DateTimeImmutable((string) $member['membership_end_date'])) >= new DateTimeImmutable('today');
                   $status      = $isActive ? 'Active' : 'Expired';
                   $statusClass = $isActive ? 'stat-badge stat-badge-ok' : 'stat-badge stat-badge-danger';
-                  $photoSrc    = !empty($member['photo_path']) ? url((string) $member['photo_path']) : 'https://placehold.co/64x64?text=RCF';
+                  $photoSrc    = !empty($member['photo_path']) ? url((string) $member['photo_path']) : url('/assets/img/placeholder-member.svg');
                   ?>
                   <tr>
                     <td style="width: 64px; padding: 10px 12px 10px 16px;">
@@ -288,7 +288,7 @@ require __DIR__ . '/../partials/nav.php';
 </div>
 
 <!-- Lightbox script -->
-<script>
+<script nonce="<?= e(csp_nonce()) ?>">
 (function () {
   var lightbox  = document.getElementById('photoLightbox');
   var lbImg     = document.getElementById('lightboxImg');

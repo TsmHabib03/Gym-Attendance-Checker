@@ -1,12 +1,15 @@
-# Email Alert Branding & Check-in Alert Implementation
+# TODO: Fix 403 Forbidden on /public
 
-## Steps
-- [x] 1. Plan approved by user
-- [x] 2. Add `sendCheckInAlert()` to `src/Services/AlertService.php`
-- [x] 3. Create `views/emails/checkin_alert.php` (black & white + logo)
-- [x] 4. Update `src/Services/AttendanceService.php` to trigger check-in email
-- [x] 5. Rebrand `views/emails/expired_scan_alert.php` (black & white + logo)
-- [x] 6. Rebrand `views/emails/expiry_reminder.php` (black & white + logo)
-- [x] 7. Update `AlertService.php` to pass `logoUrl` to all templates
-- [x] 8. Verify & test
+## Problem
+Accessing `http://localhost/gym-attendance-checker/public` returns **403 Forbidden** because:
+1. Root `.htaccess` (`gym-attendance-checker/.htaccess`) has `Require all denied` (defense-in-depth for misconfigured docroots).
+2. `public/.htaccess` does **not** explicitly grant access, so the parent's denial cascades.
+
+## Plan
+1. **Edit `public/.htaccess`**:
+   - Add an explicit `Require all granted` / `Allow from all` block at the top to override the root `.htaccess` denial **only** for the `public/` directory.
+   - Move `DirectoryIndex index.php` outside the `<IfModule !mod_rewrite.c>` fallback block so it always applies.
+   - Keep all existing security rules intact (probes, traversal, TRACE, dotfiles, backup files, headers, upload limits).
+2. **Verify** root directory and sensitive paths (`src/`, `views/`, `storage/`, `.env`) still return 403.
+3. **Test** `http://localhost/gym-attendance-checker/public` loads correctly.
 

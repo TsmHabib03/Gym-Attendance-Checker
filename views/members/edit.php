@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-$currentPhotoSrc = !empty($member['photo_path']) ? url((string) $member['photo_path']) : 'https://placehold.co/80x80?text=GYM';
+$currentPhotoSrc = !empty($member['photo_path']) ? url((string) $member['photo_path']) : url('/assets/img/placeholder-member.svg');
 $membershipActive = (new DateTimeImmutable((string) $member['membership_end_date'])) >= new DateTimeImmutable('today');
 $membershipStatus  = $membershipActive ? 'Active' : 'Expired';
 $statusBadgeClass  = $membershipActive ? 'stat-badge stat-badge-ok' : 'stat-badge stat-badge-danger';
@@ -209,7 +209,7 @@ require __DIR__ . '/../partials/nav.php';
     "></p>
   </div>
 </div>
-<script>
+<script nonce="<?= e(csp_nonce()) ?>">
 function openEditLightbox(src, name) {
   document.getElementById('editLightboxImg').src = src || '';
   document.getElementById('editLightboxName').textContent = name || '';

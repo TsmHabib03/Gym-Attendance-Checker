@@ -60,7 +60,7 @@ require __DIR__ . '/../partials/nav.php';
     </div>
     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
       <a href="<?= e(url('/members')) ?>" class="btn-ghost" style="height: 38px; font-size: 11px;">← Members</a>
-      <button type="button" onclick="window.print()" class="btn-primary" style="height: 38px; font-size: 11px;">🖨 Print All Cards</button>
+      <button type="button" id="printAllBtn" class="btn-primary" style="height: 38px; font-size: 11px;">🖨 Print All Cards</button>
     </div>
   </div>
 
@@ -71,7 +71,7 @@ require __DIR__ . '/../partials/nav.php';
         <strong style="color: var(--light);"><?= e((string) count($processedMembers)) ?></strong> member <?= count($processedMembers) === 1 ? 'card' : 'cards' ?> ready to print in a single job.
       </p>
     </div>
-    <button type="button" onclick="window.print()" class="btn-primary" style="margin-left: auto; height: 36px; font-size: 12px; white-space: nowrap;">🖨 Print All</button>
+    <button type="button" id="printAllBtn2" class="btn-primary" style="margin-left: auto; height: 36px; font-size: 12px; white-space: nowrap;">🖨 Print All</button>
   </div>
 </div>
 
@@ -120,8 +120,8 @@ require __DIR__ . '/../partials/nav.php';
   </div><!-- /.cards-grid -->
 </div><!-- /.print-area -->
 
-<script src="<?= e(asset('lib/qrcode.min.js')) ?>"></script>
-<script>
+<script nonce="<?= e(csp_nonce()) ?>" src="<?= e(asset('lib/qrcode.min.js')) ?>"></script>
+<script nonce="<?= e(csp_nonce()) ?>">
 (function () {
   if (!window.QRCode) return;
   document.querySelectorAll('.bcard').forEach(function (card) {
@@ -138,6 +138,14 @@ require __DIR__ . '/../partials/nav.php';
         correctLevel: window.QRCode.CorrectLevel ? window.QRCode.CorrectLevel.M : 0,
       });
     } catch (_e) {}
+  });
+})();
+</script>
+<script nonce="<?= e(csp_nonce()) ?>">
+(function () {
+  ['printAllBtn', 'printAllBtn2'].forEach(function (id) {
+    var btn = document.getElementById(id);
+    if (btn) btn.addEventListener('click', function () { window.print(); });
   });
 })();
 </script>
@@ -255,7 +263,7 @@ require __DIR__ . '/../partials/nav.php';
 .bcard-name {
   font-size: 9.5pt;
   font-weight: 700;
-  color: #22c55e;
+  color: #00d4ff;
   margin: 0 0 3px;
   letter-spacing: 0.02em;
   line-height: 1.2;
@@ -355,3 +363,4 @@ require __DIR__ . '/../partials/nav.php';
 </style>
 
 <?php require __DIR__ . '/../partials/foot.php'; ?>
+        

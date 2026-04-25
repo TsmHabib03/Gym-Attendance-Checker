@@ -125,6 +125,11 @@ final class AttendanceService
 
     private function storeCheckinPhoto(string $photoData): ?string
     {
+        // Hard cap on the data-URI length we will even consider parsing.
+        if (strlen($photoData) > 3 * 1024 * 1024) {
+            return null;
+        }
+
         if (!str_starts_with($photoData, 'data:image/')) {
             return null;
         }
@@ -133,10 +138,27 @@ final class AttendanceService
             return null;
         }
 
-        $base64 = substr($photoData, strpos($photoData, ',') + 1);
-        $binary = base64_decode($base64, true);
-        if ($binary === false || strlen($binary) > 2 * 1024 * 1024) {
+        $commaPos = strpos($photoData, ',');
+        if ($commaPos === false) {
             return null;
+        }
+
+        $base64 = substr($photoData, $commaPos + 1);
+        // strict mode — base64_decode returns false on any non-base64 char.
+        $binary = base64_decode($base64, true);
+        if ($binary === false || strlen($binary) > 2 * 1024 * 1024 || strlen($binary) < 64) {
+            return null;
+        }
+
+        // Verify the decoded bytes really are an image of the declared type.
+        $finfo = function_exists('finfo_open') ? finfo_open(FILEINFO_MIME_TYPE) : false;
+        if ($finfo !== false) {
+            $detected = strtolower((string) finfo_buffer($finfo, $binary));
+            finfo_close($finfo);
+            $expectedMime = 'image/' . ($matches[1] === 'jpg' ? 'jpeg' : $matches[1]);
+            if ($detected !== $expectedMime) {
+                return null;
+            }
         }
 
         $ext = $matches[1] === 'jpeg' ? 'jpg' : $matches[1];
@@ -147,7 +169,18 @@ final class AttendanceService
         }
 
         $targetFile = $targetDir . DIRECTORY_SEPARATOR . $filename;
-        file_put_contents($targetFile, $binary);
+        if (file_put_contents($targetFile, $binary) === false) {
+            return null;
+        }
+        @chmod($targetFile, 0644);
+
+        // Confirm the saved file is a real image — getimagesize returns false
+        // for non-images. If it fails, drop the file.
+        $info = @getimagesize($targetFile);
+        if ($info === false) {
+            @unlink($targetFile);
+            return null;
+        }
 
         return '/uploads/checkin_photos/' . $filename;
     }

@@ -248,7 +248,7 @@ $navLinks = [
   </div>
 </aside>
 
-<script>
+<script nonce="<?= e(csp_nonce()) ?>">
 (function () {
   var toggle = document.getElementById('mobileNavToggle');
   var close  = document.getElementById('mobileNavClose');

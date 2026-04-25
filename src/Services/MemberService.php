@@ -191,9 +191,29 @@ final class MemberService
             throw new InvalidArgumentException('Invalid member photo upload payload.');
         }
 
+        // SECURITY: Validate the actual content is an image (not just trusting
+        // the client-declared MIME type). getimagesize parses image headers and
+        // returns false for anything that isn't a real image.
+        $imageInfo = @getimagesize($tmpName);
+        if ($imageInfo === false || !isset($imageInfo[2])) {
+            throw new InvalidArgumentException('Uploaded file is not a valid image.');
+        }
+
+        $allowedTypes = [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP];
+        if (!in_array($imageInfo[2], $allowedTypes, true)) {
+            throw new InvalidArgumentException('Member photo must be JPG, PNG, or WEBP.');
+        }
+
+        // Reject absurd dimensions (decompression bomb mitigation).
+        $width = (int) ($imageInfo[0] ?? 0);
+        $height = (int) ($imageInfo[1] ?? 0);
+        if ($width <= 0 || $height <= 0 || $width > 8000 || $height > 8000 || ($width * $height) > 40_000_000) {
+            throw new InvalidArgumentException('Image dimensions are out of range.');
+        }
+
         $mimeType = strtolower($this->detectMimeType($tmpName));
-        $allowed = ['image/jpeg', 'image/png', 'image/webp'];
-        if (!in_array($mimeType, $allowed, true)) {
+        $allowedMime = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!in_array($mimeType, $allowedMime, true)) {
             throw new InvalidArgumentException('Member photo must be JPG, PNG, or WEBP.');
         }
 
@@ -204,6 +224,9 @@ final class MemberService
             default => 'jpg',
         };
 
+        // Filename has only random hex bytes — the user never supplies the
+        // stored name, so path traversal / null-byte / shell-meta injection
+        // via filename is impossible.
         $filename = 'member_' . bin2hex(random_bytes(10)) . '.' . $extension;
         $targetDir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'member_photos';
         if (!is_dir($targetDir)) {
@@ -215,7 +238,61 @@ final class MemberService
             throw new InvalidArgumentException('Unable to save uploaded photo.');
         }
 
+        // SECURITY: Re-encode the image through GD when available. This strips
+        // any embedded scripts, EXIF blobs, or polyglot payloads — what gets
+        // saved is a clean, server-generated copy.
+        $this->reencodeImage($targetPath, $imageInfo[2]);
+
+        // Force restrictive permissions on the saved file.
+        @chmod($targetPath, 0644);
+
         return '/uploads/member_photos/' . $filename;
+    }
+
+    /**
+     * Re-encode an uploaded image to strip metadata and any non-image bytes.
+     * Best effort — silently no-ops if GD is unavailable.
+     */
+    private function reencodeImage(string $path, int $imageType): void
+    {
+        if (!extension_loaded('gd')) {
+            return;
+        }
+
+        try {
+            $img = match ($imageType) {
+                IMAGETYPE_JPEG => @imagecreatefromjpeg($path),
+                IMAGETYPE_PNG => @imagecreatefrompng($path),
+                IMAGETYPE_WEBP => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($path) : false,
+                default => false,
+            };
+            if (!$img) {
+                return;
+            }
+
+            // Preserve transparency for PNG.
+            if ($imageType === IMAGETYPE_PNG) {
+                imagealphablending($img, false);
+                imagesavealpha($img, true);
+            }
+
+            $tempPath = $path . '.tmp';
+            $written = match ($imageType) {
+                IMAGETYPE_JPEG => @imagejpeg($img, $tempPath, 88),
+                IMAGETYPE_PNG => @imagepng($img, $tempPath, 6),
+                IMAGETYPE_WEBP => function_exists('imagewebp') ? @imagewebp($img, $tempPath, 88) : false,
+                default => false,
+            };
+            imagedestroy($img);
+
+            if ($written && is_file($tempPath)) {
+                @rename($tempPath, $path);
+            } else {
+                @unlink($tempPath);
+            }
+        } catch (\Throwable $t) {
+            Logger::error('Image re-encode failed', ['path' => $path, 'error' => $t->getMessage()]);
+        }
     }
 
     private function detectMimeType(string $filePath): string

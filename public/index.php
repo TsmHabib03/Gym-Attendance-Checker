@@ -13,12 +13,49 @@ use App\Core\Request;
 
 require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'bootstrap.php';
 
+// -----------------------------------------------------------------------------
+// Security headers — defense in depth
+// -----------------------------------------------------------------------------
+$cspNonce = base64_encode(random_bytes(16));
+$GLOBALS['__CSP_NONCE'] = $cspNonce;
+
+$isHttps = (
+    (($_SERVER['HTTPS'] ?? '') !== '' && strtolower((string) $_SERVER['HTTPS']) !== 'off')
+    || ((int) ($_SERVER['SERVER_PORT'] ?? 0) === 443)
+    || (strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https')
+);
+
 header('X-Frame-Options: SAMEORIGIN');
 header('X-Content-Type-Options: nosniff');
-header('Referrer-Policy: same-origin');
-header("Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self';");
-header('Permissions-Policy: camera=(self), geolocation=(), microphone=()');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+header('X-Permitted-Cross-Domain-Policies: none');
+header('Cross-Origin-Opener-Policy: same-origin');
+header('Cross-Origin-Resource-Policy: same-origin');
+header('Permissions-Policy: camera=(self), geolocation=(), microphone=(), payment=(), usb=()');
 
+if ($isHttps) {
+    header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+}
+
+// CSP — inline scripts must use the per-request nonce. We keep 'unsafe-inline'
+// only for style-src because Tailwind CDN injects styles at runtime.
+$csp = "default-src 'self'; "
+    . "base-uri 'self'; "
+    . "form-action 'self'; "
+    . "frame-ancestors 'self'; "
+    . "object-src 'none'; "
+    . "script-src 'self' 'nonce-" . $cspNonce . "' https://cdn.tailwindcss.com https://unpkg.com; "
+    . "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    . "img-src 'self' data: blob:; "
+    . "font-src 'self' https://fonts.gstatic.com data:; "
+    . "connect-src 'self'; "
+    . "media-src 'self' blob:; "
+    . "worker-src 'self' blob:";
+header('Content-Security-Policy: ' . $csp);
+
+// -----------------------------------------------------------------------------
+// Routing
+// -----------------------------------------------------------------------------
 $method = Request::method();
 $path = Request::path();
 
@@ -121,11 +158,13 @@ try {
         'method' => $method,
     ]);
 
-    http_response_code(500);
-    if (Config::bool('APP_DEBUG', false)) {
-        echo 'Unexpected application error: ' . e($throwable->getMessage());
-        return;
+    if (!headers_sent()) {
+        http_response_code(500);
     }
 
-    echo 'Unexpected application error. Please try again.';
+    // SECURITY: Never leak exception text to clients, even in debug mode.
+    // Real diagnostics live in storage/logs/app.log.
+    echo Config::bool('APP_DEBUG', false)
+        ? 'Internal error (debug). Check application logs.'
+        : 'Unexpected application error. Please try again.';
 }

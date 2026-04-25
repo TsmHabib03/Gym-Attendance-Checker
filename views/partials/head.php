@@ -12,8 +12,9 @@ $isDashboard = !empty($dashboardShell) || (isset($title) && $title === 'Dashboar
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?= e($titleText) ?></title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
+  <meta name="csp-nonce" content="<?= e(csp_nonce()) ?>">
+  <script nonce="<?= e(csp_nonce()) ?>" src="https://cdn.tailwindcss.com"></script>
+  <script nonce="<?= e(csp_nonce()) ?>">
     tailwind.config = {
       theme: {
         screens: {

@@ -7,10 +7,12 @@ namespace App\Controllers;
 use App\Core\Auth;
 use App\Core\Csrf;
 use App\Core\Logger;
+use App\Core\RateLimiter;
 use App\Core\Request;
 use App\Core\Validator;
 use App\Core\View;
 use App\Services\MemberService;
+use InvalidArgumentException;
 use Throwable;
 
 final class MemberController
@@ -32,7 +34,7 @@ final class MemberController
         View::render('members/index', [
             'members' => $list,
             'csrfToken' => Csrf::token(),
-            'search' => (string) ($search ?? ''),
+            'search' => is_string($search) ? Validator::string($search, 100) : '',
         ]);
     }
 
@@ -49,13 +51,14 @@ final class MemberController
     {
         Auth::requireAdmin();
         Csrf::assertValid((string) Request::input('_csrf'));
+        $this->rateLimit('member_write', (string) (Auth::id() ?? Request::ip()), 30, 60);
 
         try {
             $memberId = $this->members->create($_POST, $_FILES);
             Logger::audit('member_create_success', Auth::id(), ['member_id' => $memberId]);
             flash('success', 'Member created successfully.');
             redirect('/members');
-        } catch (Throwable $throwable) {
+        } catch (InvalidArgumentException $throwable) {
             flash('error', $throwable->getMessage());
             $_SESSION['_old'] = [
                 'full_name' => (string) ($_POST['full_name'] ?? ''),
@@ -63,6 +66,10 @@ final class MemberController
                 'gender' => (string) ($_POST['gender'] ?? ''),
                 'membership_end_date' => (string) ($_POST['membership_end_date'] ?? ''),
             ];
+            redirect('/members/create');
+        } catch (Throwable $throwable) {
+            Logger::error('Member create failed', ['error' => $throwable->getMessage()]);
+            flash('error', 'Unable to create member. Please try again.');
             redirect('/members/create');
         }
     }
@@ -141,6 +148,7 @@ final class MemberController
     {
         Auth::requireAdmin();
         Csrf::assertValid((string) Request::input('_csrf'));
+        $this->rateLimit('member_write', (string) (Auth::id() ?? Request::ip()), 30, 60);
 
         try {
             $id = Validator::int(Request::input('id'), 'Member id');
@@ -148,8 +156,12 @@ final class MemberController
             Logger::audit('member_update_success', Auth::id(), ['member_id' => $id]);
             flash('success', 'Member updated successfully.');
             redirect('/members');
-        } catch (Throwable $throwable) {
+        } catch (InvalidArgumentException $throwable) {
             flash('error', $throwable->getMessage());
+            redirect('/members');
+        } catch (Throwable $throwable) {
+            Logger::error('Member update failed', ['error' => $throwable->getMessage()]);
+            flash('error', 'Unable to update member. Please try again.');
             redirect('/members');
         }
     }
@@ -158,14 +170,18 @@ final class MemberController
     {
         Auth::requireAdmin();
         Csrf::assertValid((string) Request::input('_csrf'));
+        $this->rateLimit('member_delete', (string) (Auth::id() ?? Request::ip()), 10, 60);
 
         try {
             $id = Validator::int(Request::input('id'), 'Member id');
             $this->members->delete($id);
             Logger::audit('member_delete_success', Auth::id(), ['member_id' => $id]);
             flash('success', 'Member deleted successfully.');
-        } catch (Throwable $throwable) {
+        } catch (InvalidArgumentException $throwable) {
             flash('error', $throwable->getMessage());
+        } catch (Throwable $throwable) {
+            Logger::error('Member delete failed', ['error' => $throwable->getMessage()]);
+            flash('error', 'Unable to delete member. Please try again.');
         }
 
         redirect('/members');
@@ -175,9 +191,18 @@ final class MemberController
     {
         Auth::requireAdmin();
         header('Content-Type: application/json; charset=utf-8');
+        header('X-Content-Type-Options: nosniff');
 
         try {
             Csrf::assertValid((string) Request::input('_csrf'));
+
+            $this->rateLimit(
+                'qr_regenerate',
+                (string) (Auth::id() ?? Request::ip()),
+                10,
+                300
+            );
+
             $id = Validator::int(Request::input('id'), 'Member id');
             $member = $this->members->regenerateQr($id);
 
@@ -199,15 +224,48 @@ final class MemberController
             ];
 
             echo (string) json_encode($response, JSON_UNESCAPED_SLASHES);
-        } catch (Throwable $throwable) {
+        } catch (InvalidArgumentException $throwable) {
             http_response_code(422);
-
-            $error = [
+            echo (string) json_encode([
                 'ok' => false,
                 'message' => $throwable->getMessage(),
-            ];
+            ], JSON_UNESCAPED_SLASHES);
+        } catch (Throwable $throwable) {
+            Logger::error('regenerateQr failed', ['error' => $throwable->getMessage()]);
+            http_response_code(500);
+            echo (string) json_encode([
+                'ok' => false,
+                'message' => 'Server error. Please try again.',
+            ], JSON_UNESCAPED_SLASHES);
+        }
+    }
 
-            echo (string) json_encode($error, JSON_UNESCAPED_SLASHES);
+    /**
+     * Apply a rate limit. For QR endpoints we emit JSON 429; for HTML POSTs we
+     * flash and redirect to /members.
+     */
+    private function rateLimit(string $action, string $key, int $maxAttempts, int $windowSeconds): void
+    {
+        $rate = RateLimiter::hit($action, $key, $maxAttempts, $windowSeconds);
+        if (!$rate['allowed']) {
+            Logger::audit('rate_limited', Auth::id(), [
+                'action' => $action,
+                'retry_after' => (int) ($rate['retry_after'] ?? 0),
+            ]);
+
+            if (str_starts_with($action, 'qr_')) {
+                http_response_code(429);
+                header('Content-Type: application/json; charset=utf-8');
+                echo (string) json_encode([
+                    'ok' => false,
+                    'message' => 'Rate limit exceeded. Retry in '
+                        . (int) ($rate['retry_after'] ?? 0) . ' seconds.',
+                ], JSON_UNESCAPED_SLASHES);
+                exit;
+            }
+
+            flash('error', 'You are making changes too quickly. Please slow down.');
+            redirect('/members');
         }
     }
 }

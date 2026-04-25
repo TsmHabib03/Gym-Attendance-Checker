@@ -1,0 +1,48 @@
+# SECURITY: This file is the project root .htaccess. The web server's
+# document root MUST be set to ./public/. This file is a defense-in-depth
+# safeguard for misconfigured servers — it denies access to everything at
+# the project root so secrets, sources, and configs are never served.
+
+# When mod_rewrite is available, allow only public/ and block everything else.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Allow access to public directory.
+    RewriteRule ^public/ - [L]
+
+    # Block everything else with 403.
+    RewriteRule .* - [F,L]
+</IfModule>
+
+# Fallback: if mod_rewrite is unavailable, deny everything.
+<IfModule !mod_rewrite.c>
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</IfModule>
+
+# Block sensitive files no matter how the server is set up.
+<FilesMatch "\.(env|env\..*|ini|log|sql|sh|bash|md|json|lock|yml|yaml|dockerfile|gitignore|dockerignore)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Block dotfiles entirely.
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>

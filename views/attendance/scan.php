@@ -162,14 +162,14 @@ require __DIR__ . '/../partials/nav.php';
     </div>
   </div>
 </div>
-<script>
+<script nonce="<?= e(csp_nonce()) ?>">
   window.GYM_SCAN_CONFIG = {
-    csrfToken:           <?= json_encode($csrfToken, JSON_UNESCAPED_SLASHES) ?>,
-    checkinEndpoint:     <?= json_encode(url('/api/checkin'), JSON_UNESCAPED_SLASHES) ?>,
-    appBasePath:         <?= json_encode(url(''), JSON_UNESCAPED_SLASHES) ?>,
+    csrfToken:           <?= json_encode($csrfToken, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+    checkinEndpoint:     <?= json_encode(url('/api/checkin'), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
+    appBasePath:         <?= json_encode(url(''), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
     photoCaptureEnabled: <?= $photoCaptureEnabled ? 'true' : 'false' ?>,
   };
 </script>
-<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="<?= e(asset('js/scan.js')) ?>"></script>
+<script nonce="<?= e(csp_nonce()) ?>" src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+<script nonce="<?= e(csp_nonce()) ?>" src="<?= e(asset('js/scan.js')) ?>"></script>
 <?php require __DIR__ . '/../partials/foot.php'; ?>

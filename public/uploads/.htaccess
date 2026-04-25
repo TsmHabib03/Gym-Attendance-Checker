@@ -1,0 +1,47 @@
+# SECURITY: Disable all script execution under public/uploads/.
+# This directory holds user-uploaded images. If an attacker manages to
+# place a .php / .phtml / .phar file (e.g. via a polyglot or future bug)
+# the web server must refuse to execute it.
+
+# Apache 2.4
+<IfModule mod_authz_core.c>
+    <FilesMatch "\.(php|php\d?|phtml|phar|pht|inc|cgi|pl|py|rb|sh|bash|exe|asp|aspx|jsp)$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+
+# Apache 2.2
+<IfModule !mod_authz_core.c>
+    <FilesMatch "\.(php|php\d?|phtml|phar|pht|inc|cgi|pl|py|rb|sh|bash|exe|asp|aspx|jsp)$">
+        Order deny,allow
+        Deny from all
+    </FilesMatch>
+</IfModule>
+
+# Strip handlers and engines just in case the FilesMatch above is bypassed.
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>
+
+RemoveHandler .php .php3 .php4 .php5 .php7 .php8 .phtml .phar .pht
+RemoveType .php .php3 .php4 .php5 .php7 .php8 .phtml .phar .pht
+
+# Force inline image rendering only — uploads must never be downloaded
+# as HTML and must not be sniffed into something else.
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set Content-Disposition "inline"
+    Header set X-Frame-Options "SAMEORIGIN"
+</IfModule>
+
+# Do NOT remove FollowSymLinks here — mod_rewrite (active in the parent
+# public/.htaccess) refuses to function in any directory where FollowSymLinks
+# is disabled, which causes Apache to reject all requests including image files.
+# The parent already sets +FollowSymLinks; we only need to lock down execution.
+Options -ExecCGI -Indexes
