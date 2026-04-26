@@ -42,6 +42,22 @@ final class AttendanceController
         header('X-Content-Type-Options: nosniff');
         header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
+        // Reject non-JSON bodies — prevents form-based cross-origin requests
+        // from reaching the CSRF check even if headers were spoofed.
+        $contentType = strtolower((string) ($_SERVER['CONTENT_TYPE'] ?? ''));
+        if (!str_contains($contentType, 'application/json')) {
+            http_response_code(415);
+            echo json_encode(['ok' => false, 'message' => 'Unsupported Media Type. Use application/json.']);
+            return;
+        }
+
+        // Require XMLHttpRequest marker — second CSRF mitigation layer.
+        if (!Request::isAjax()) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'message' => 'Invalid request.']);
+            return;
+        }
+
         $csrfHeader = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
         if (!Csrf::validate($csrfHeader)) {
             http_response_code(419);

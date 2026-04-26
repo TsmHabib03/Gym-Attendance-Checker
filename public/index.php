@@ -37,16 +37,19 @@ if ($isHttps) {
     header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
 }
 
-// CSP — inline scripts must use the per-request nonce. We keep 'unsafe-inline'
-// only for style-src because Tailwind CDN injects styles at runtime.
+// CSP — strict nonce-based policy.
+// Tailwind CDN is intentionally excluded from script-src: loading a third-party
+// script unconditionally is a supply-chain risk (compromised CDN = full XSS).
+// Tailwind should be compiled to a local CSS file for production. The CDN is
+// only permitted in the style-src directive where it injects CSS, not JS.
 $csp = "default-src 'self'; "
     . "base-uri 'self'; "
     . "form-action 'self'; "
     . "frame-ancestors 'self'; "
     . "object-src 'none'; "
-    . "script-src 'self' 'nonce-" . $cspNonce . "' https://cdn.tailwindcss.com https://unpkg.com; "
-    . "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-    . "img-src 'self' data: blob:; "
+    . "script-src 'self' 'nonce-" . $cspNonce . "'; "
+    . "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com; "
+    . "img-src 'self' data: blob: https://placehold.co; "
     . "font-src 'self' https://fonts.gstatic.com data:; "
     . "connect-src 'self'; "
     . "media-src 'self' blob:; "
@@ -131,6 +134,11 @@ try {
 
     if ($method === 'POST' && $path === '/members/delete') {
         $memberController->delete();
+        return;
+    }
+
+    if ($method === 'POST' && $path === '/members/force-delete') {
+        $memberController->forceDelete();
         return;
     }
 

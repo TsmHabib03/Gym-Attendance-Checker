@@ -22,25 +22,24 @@ require __DIR__ . '/../partials/nav.php';
 <!-- ============================================================
      DASHBOARD PAGE
      ============================================================ -->
-<div class="page-enter" style="max-width: 1280px; margin: 0 auto; padding: 32px 16px 64px;">
+<div class="page-enter page-container">
 
   <!-- Page header -->
-  <div style="margin-bottom: 32px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+  <div class="page-header">
     <div>
-      <!-- LOGO PLACEHOLDER: optional secondary logo here -->
       <p style="font-size: 11px; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; margin: 0 0 6px;">
         Control Room
       </p>
       <h1 style="
         font-family: 'Bebas Neue', sans-serif;
-        font-size: clamp(32px, 5vw, 48px);
+        font-size: clamp(28px, 5vw, 48px);
         letter-spacing: 0.10em;
         color: var(--white);
         margin: 0;
         line-height: 1;
       ">Dashboard</h1>
     </div>
-    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+    <div class="page-header-actions">
       <a href="<?= e(url('/members/create')) ?>" class="btn-primary" style="height: 38px; font-size: 11px;">
         + Add Member
       </a>
@@ -62,16 +61,7 @@ require __DIR__ . '/../partials/nav.php';
   <?php endif; ?>
 
   <!-- ── STAT GRID ───────────────────────────────────────── -->
-  <div style="
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 1px;
-    background: var(--border);
-    border: 1px solid var(--border);
-    border-radius: 2px;
-    overflow: hidden;
-    margin-bottom: 24px;
-  ">
+  <div class="stat-grid" style="margin-bottom: 24px;">
     <?php
     $stats = [
       ['label' => 'Total Members',   'value' => $memberStats['total'],   'id' => 'totalMembersValue',   'sub' => 'Registered'],
@@ -83,22 +73,22 @@ require __DIR__ . '/../partials/nav.php';
     foreach ($stats as $s): ?>
       <div style="
         background: var(--surface);
-        padding: 20px 18px;
+        padding: 14px 14px;
         display: flex;
         flex-direction: column;
         gap: 4px;
       ">
-        <span style="font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);">
+        <span style="font-size: 9px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
           <?= e($s['label']) ?>
         </span>
         <span id="<?= e($s['id']) ?>" style="
           font-family: 'Bebas Neue', sans-serif;
-          font-size: 40px;
+          font-size: clamp(28px, 4vw, 40px);
           color: var(--white);
           line-height: 1;
           letter-spacing: 0.04em;
         "><?= e((string) $s['value']) ?></span>
-        <span style="font-size: 11px; color: var(--muted);"><?= e($s['sub']) ?></span>
+        <span style="font-size: 10px; color: var(--muted);"><?= e($s['sub']) ?></span>
       </div>
     <?php endforeach; ?>
   </div>
@@ -109,7 +99,7 @@ require __DIR__ . '/../partials/nav.php';
     grid-template-columns: 1fr;
     gap: 16px;
     margin-bottom: 24px;
-  " class="lg:grid-cols-[1fr_320px]">
+  " class="lg:grid-cols-dash">
 
     <!-- Activity panel -->
     <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 2px; overflow: hidden;">
@@ -327,11 +317,7 @@ require __DIR__ . '/../partials/nav.php';
 
   <!-- ── RECENT SCAN ACTIVITY ─────────────────────────────── -->
   <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 2px; overflow: hidden;">
-    <div style="
-      padding: 20px 24px;
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
-    ">
+    <div class="card-header">
       <div>
         <h2 style="
           font-family: 'Bebas Neue', sans-serif;
@@ -340,7 +326,7 @@ require __DIR__ . '/../partials/nav.php';
         ">Recent Scan Activity</h2>
         <p style="font-size: 12px; color: var(--muted); margin: 0;">Last 30 attendance events</p>
       </div>
-      <a href="<?= e(url('/attendance/scan')) ?>" class="btn-primary" style="height: 36px; font-size: 11px;">
+      <a href="<?= e(url('/attendance/scan')) ?>" class="btn-primary btn-mobile-full" style="height: 36px; font-size: 11px;">
         Open Scanner
       </a>
     </div>

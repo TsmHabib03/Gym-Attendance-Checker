@@ -44,22 +44,22 @@ require __DIR__ . '/../partials/head.php';
 require __DIR__ . '/../partials/nav.php';
 ?>
 
-<div class="page-enter" style="max-width: 1280px; margin: 0 auto; padding: 32px 16px 64px;">
+<div class="page-enter page-container">
 
   <!-- Page header -->
-  <div style="margin-bottom: 32px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;" class="no-print">
+  <div class="page-header no-print">
     <div>
       <p style="font-size: 11px; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; margin: 0 0 6px;">QR Export</p>
-      <h1 style="font-family: 'Bebas Neue', sans-serif; font-size: clamp(32px, 5vw, 48px); letter-spacing: 0.10em; color: var(--white); margin: 0; line-height: 1;">Member QR Card</h1>
+      <h1 style="font-family: 'Bebas Neue', sans-serif; font-size: clamp(28px, 5vw, 48px); letter-spacing: 0.10em; color: var(--white); margin: 0; line-height: 1;">Member QR Card</h1>
     </div>
-    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+    <div class="page-header-actions">
       <a href="<?= e(url('/members')) ?>" class="btn-ghost" style="height: 38px; font-size: 11px;">← Members</a>
       <button type="button" id="printCardBtn" class="btn-primary" style="height: 38px; font-size: 11px;">🖨 Print Card</button>
     </div>
   </div>
 
   <!-- Two-column layout -->
-  <div style="display: grid; gap: 16px;" class="lg:grid-cols-[280px_1fr]">
+  <div class="sidebar-layout">
 
     <!-- Sidebar -->
     <aside class="order-2 lg:order-1 no-print" style="display: flex; flex-direction: column; gap: 16px;">
@@ -168,7 +168,7 @@ require __DIR__ . '/../partials/nav.php';
           <span id="qrStatus" style="font-size: 13px; font-weight: 600; color: var(--dim);">Rendering QR code...</span>
         </div>
 
-        <div style="display: grid; gap: 16px;" class="lg:grid-cols-[minmax(240px,300px)_1fr]">
+<div style="display: grid; gap: 16px;" class="lg:grid-cols-qr">
           <div style="background: #ffffff; border: 1px solid var(--border); border-radius: 2px; padding: 16px; display: flex; align-items: center; justify-content: center;">
             <div id="memberQrCanvas" style="width: 100%; max-width: 280px; min-height: 240px; display: flex; align-items: center; justify-content: center;"></div>
           </div>

@@ -9,27 +9,27 @@ $statusBadgeClass  = $membershipActive ? 'stat-badge stat-badge-ok' : 'stat-badg
 require __DIR__ . '/../partials/head.php';
 require __DIR__ . '/../partials/nav.php';
 ?>
-<div class="page-enter" style="max-width: 1280px; margin: 0 auto; padding: 32px 16px 64px;">
+<div class="page-enter page-container">
   <!-- Page header -->
-  <div style="margin-bottom: 32px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+  <div class="page-header">
     <div>
       <p style="font-size: 11px; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; margin: 0 0 6px;">Member Update</p>
       <h1 style="
         font-family: 'Bebas Neue', sans-serif;
-        font-size: clamp(32px, 5vw, 48px);
+        font-size: clamp(28px, 5vw, 48px);
         letter-spacing: 0.10em;
         color: var(--white);
         margin: 0; line-height: 1;
       ">Edit Member</h1>
     </div>
-    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+    <div class="page-header-actions">
       <a href="<?= e(url('/members')) ?>" class="btn-ghost" style="height: 38px; font-size: 11px;">← Back</a>
     </div>
   </div>
   <!-- Flash -->
   <?php require __DIR__ . '/../partials/flash.php'; ?>
   <!-- Two-column layout -->
-  <div style="display: grid; gap: 16px;" class="lg:grid-cols-[280px_1fr]">
+  <div class="sidebar-layout">
     <!-- ── SIDEBAR ── -->
     <aside class="order-2 lg:order-1" style="display: flex; flex-direction: column; gap: 16px;">
       <!-- Member summary card -->
@@ -163,18 +163,49 @@ require __DIR__ . '/../partials/nav.php';
           </div>
         </div>
         <!-- Action buttons -->
-        <div style="display: flex; gap: 8px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid var(--border);">
-          <button type="submit" class="btn-primary">Update Member</button>
-          <a href="<?= e(url('/members')) ?>" class="btn-ghost">Cancel</a>
-          <button
-            type="submit"
-            formaction="<?= e(url('/members/delete')) ?>"
-            formmethod="post"
-            formnovalidate
-            class="btn-danger"
-            style="margin-left: auto;"
-            onclick="return confirm('Delete this member? This action cannot be undone.');"
-          >Delete Member</button>
+        <?php
+        $editLogsCount    = (int) ($attendanceCount ?? 0);
+        $editHasAttendance = $editLogsCount > 0;
+        ?>
+        <div style="padding-top: 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;">
+          <div class="btn-row btn-row-fill">
+            <button type="submit" class="btn-primary" style="min-width: 120px;">Update Member</button>
+            <a href="<?= e(url('/members')) ?>" class="btn-ghost" style="min-width: 80px;">Cancel</a>
+          </div>
+          <?php if ($editHasAttendance): ?>
+            <!-- Member has attendance: show Force Delete (regular delete is blocked) -->
+            <div style="
+              padding: 12px 14px;
+              background: rgba(248,113,113,0.04);
+              border: 1px solid rgba(248,113,113,0.2);
+              border-radius: 2px;
+              font-size: 12px; color: var(--dim); line-height: 1.6;
+            ">
+              ⚠️ This member has <strong style="color: #fca5a5;"><?= e((string) $editLogsCount) ?> attendance record(s)</strong>.
+              Regular delete is blocked. Use Force Delete to remove this member along with all their attendance history.
+            </div>
+            <form action="<?= e(url('/members/force-delete')) ?>" method="post">
+              <input type="hidden" name="_csrf"    value="<?= e($csrfToken) ?>">
+              <input type="hidden" name="id"       value="<?= e((string) $member['id']) ?>">
+              <input type="hidden" name="confirm"  value="FORCE_DELETE">
+              <button
+                type="submit"
+                class="btn-danger"
+                style="width: 100%;"
+                onclick="return confirm('⚠️ FORCE DELETE\n\nThis will permanently delete &quot;<?= e(addslashes((string) $member['full_name'])) ?>&quot; AND all <?= e((string) $editLogsCount) ?> attendance record(s).\n\nThis cannot be undone. Continue?');"
+              >Force Delete Member + <?= e((string) $editLogsCount) ?> Record(s)</button>
+            </form>
+          <?php else: ?>
+            <button
+              type="submit"
+              formaction="<?= e(url('/members/delete')) ?>"
+              formmethod="post"
+              formnovalidate
+              class="btn-danger"
+              style="width: 100%;"
+              onclick="return confirm('Delete this member? This action cannot be undone.');"
+            >Delete Member</button>
+          <?php endif; ?>
         </div>
       </form>
     </section>

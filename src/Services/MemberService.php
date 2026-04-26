@@ -30,6 +30,11 @@ final class MemberService
         return $this->members->findById($id);
     }
 
+    public function getAttendanceCount(int $id): int
+    {
+        return $this->members->countAttendanceLogs($id);
+    }
+
     public function create(array $payload, array $files): int
     {
         $fullName = Validator::requiredString($payload['full_name'] ?? null, 'Full name', 120);
@@ -124,7 +129,10 @@ final class MemberService
 
         $attendanceCount = $this->members->countAttendanceLogs($id);
         if ($attendanceCount > 0) {
-            throw new InvalidArgumentException('Cannot delete member with attendance history.');
+            throw new InvalidArgumentException(
+                'Cannot delete member with attendance history (' . $attendanceCount . ' record(s)). '
+                . 'Use Force Delete to permanently remove the member and all their attendance records.'
+            );
         }
 
         $this->members->deleteById($id);
@@ -134,6 +142,34 @@ final class MemberService
             'member_id' => $id,
             'member_code' => (string) ($existing['member_code'] ?? ''),
         ]);
+    }
+
+    /**
+     * Force-delete a member and ALL their attendance history.
+     * This is irreversible — caller must show a strong confirmation prompt.
+     */
+    public function forceDelete(int $id): array
+    {
+        $existing = $this->members->findById($id);
+        if (!$existing) {
+            throw new InvalidArgumentException('Member not found.');
+        }
+
+        $logsDeleted = $this->members->deleteAttendanceLogsByMemberId($id);
+        $this->members->deleteById($id);
+        $this->deleteMemberPhoto((string) ($existing['photo_path'] ?? ''));
+
+        Logger::audit('member_force_deleted', null, [
+            'member_id' => $id,
+            'member_code' => (string) ($existing['member_code'] ?? ''),
+            'attendance_logs_deleted' => $logsDeleted,
+        ]);
+
+        return [
+            'member_code' => (string) ($existing['member_code'] ?? ''),
+            'full_name'   => (string) ($existing['full_name'] ?? ''),
+            'logs_deleted' => $logsDeleted,
+        ];
     }
 
     public function regenerateQr(int $id): array

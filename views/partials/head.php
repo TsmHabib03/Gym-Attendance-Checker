@@ -10,44 +10,17 @@ $isDashboard = !empty($dashboardShell) || (isset($title) && $title === 'Dashboar
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#080808">
   <title><?= e($titleText) ?></title>
+  <link rel="icon" type="image/x-icon"  href="<?= e(url('/favicon.ico')) ?>">
+  <link rel="icon" type="image/png" sizes="32x32" href="<?= e(url('/favicon.png')) ?>">
+  <link rel="icon" type="image/png" sizes="16x16" href="<?= e(url('/favicon-16.png')) ?>">
+  <link rel="apple-touch-icon" sizes="180x180"    href="<?= e(url('/apple-touch-icon.png')) ?>">
   <meta name="csp-nonce" content="<?= e(csp_nonce()) ?>">
-  <script nonce="<?= e(csp_nonce()) ?>" src="https://cdn.tailwindcss.com"></script>
-  <script nonce="<?= e(csp_nonce()) ?>">
-    tailwind.config = {
-      theme: {
-        screens: {
-          xs: '360px', sm: '640px', md: '768px',
-          lg: '1024px', xl: '1280px', '2xl': '1536px'
-        },
-        extend: {
-          fontFamily: {
-            display: ['"Bebas Neue"', 'sans-serif'],
-            body: ['"DM Sans"', 'sans-serif']
-          },
-          colors: {
-            gym: {
-              bg:       '#080808',
-              surface:  '#111111',
-              raised:   '#1a1a1a',
-              border:   '#2a2a2a',
-              line:     '#383838',
-              muted:    '#555555',
-              subtle:   '#888888',
-              dim:      '#aaaaaa',
-              light:    '#cccccc',
-              near:     '#eeeeee',
-              white:    '#ffffff',
-            }
-          },
-          letterSpacing: {
-            widest2: '0.25em',
-          }
-        }
-      }
-    };
-  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -328,6 +301,201 @@ $isDashboard = !empty($dashboardShell) || (isset($title) && $title === 'Dashboar
     button, [role="button"], input, select, textarea, a {
       touch-action: manipulation;
     }
+
+    /* ── iOS safe area support ─────────────────────────────── */
+    :root {
+      --safe-top:    env(safe-area-inset-top, 0px);
+      --safe-right:  env(safe-area-inset-right, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left:   env(safe-area-inset-left, 0px);
+    }
+
+    /* ── Responsive page container ─────────────────────────── */
+    .page-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 20px 12px 80px;
+    }
+    @media (min-width: 640px) {
+      .page-container { padding: 28px 20px 64px; }
+    }
+    @media (min-width: 1024px) {
+      .page-container { padding: 32px 24px 64px; }
+    }
+
+    /* ── Page header: stacks vertically on mobile ───────────── */
+    .page-header {
+      margin-bottom: 24px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    @media (min-width: 640px) {
+      .page-header {
+        margin-bottom: 32px;
+        align-items: flex-end;
+      }
+    }
+
+    /* Page header buttons: full-width stack on xs */
+    .page-header-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+    @media (min-width: 480px) {
+      .page-header-actions { width: auto; }
+    }
+    .page-header-actions .btn-primary,
+    .page-header-actions .btn-ghost {
+      flex: 1 1 auto;
+    }
+    @media (min-width: 480px) {
+      .page-header-actions .btn-primary,
+      .page-header-actions .btn-ghost {
+        flex: none;
+      }
+    }
+
+    /* ── Mobile-friendly card padding ─────────────────────────── */
+    .card-body { padding: 16px; }
+    @media (min-width: 640px) { .card-body { padding: 20px 24px; } }
+
+    /* ── Responsive data table wrapper ─────────────────────────── */
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ── Input: prevent iOS zoom (font-size must be >= 16px) ───── */
+    @media (max-width: 639px) {
+      .input { font-size: 16px; }
+      select.input { font-size: 16px; }
+    }
+
+    /* ── Stat grid: 2-col on xs, auto-fit on sm+ ───────────────── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    @media (min-width: 640px) {
+      .stat-grid {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      }
+    }
+
+    /* ── Bottom safe area for iOS home indicator ─────────────── */
+    .page-footer-safe {
+      height: calc(16px + var(--safe-bottom));
+    }
+
+    /* ── Two-column sidebar layout ──────────────────────────── */
+    .sidebar-layout {
+      display: grid;
+      gap: 16px;
+    }
+    @media (min-width: 1024px) {
+      .sidebar-layout { grid-template-columns: 280px 1fr; }
+    }
+
+    /* ── Responsive button row ─────────────────────────────── */
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .btn-row-fill > * {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+
+    /* ── Full-width buttons on mobile ─────────────────────── */
+    @media (max-width: 479px) {
+      .btn-mobile-full {
+        width: 100% !important;
+        flex: none !important;
+      }
+    }
+
+    /* ── Sticky header height compensation ─────────────────── */
+    .scroll-mt-header { scroll-margin-top: 80px; }
+
+    /* ── Card header flex: stack on mobile ──────────────────── */
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    @media (min-width: 640px) {
+      .card-header {
+        padding: 20px 24px;
+        align-items: center;
+      }
+    }
+
+    /* ── Two-col camera grid ─────────────────────────────────── */
+    .camera-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 480px) {
+      .camera-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* ── Scanner two-col ────────────────────────────────────── */
+    .scanner-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 768px) {
+      .scanner-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* ── Horizontal scroll hint on mobile tables ─────────────── */
+    .table-scroll-hint::after {
+      content: '← scroll →';
+      display: block;
+      text-align: center;
+      font-size: 10px;
+      color: var(--muted);
+      padding: 6px 0;
+      letter-spacing: 0.1em;
+    }
+    @media (min-width: 768px) {
+      .table-scroll-hint::after { display: none; }
+    }
+
+    /* ── Tailwind utility replacements ─────────────────────── */
+    .hidden { display: none !important; }
+    .order-1 { order: 1; }
+    .order-2 { order: 2; }
+
+    @media (min-width: 768px) {
+      .md\:hidden { display: none !important; }
+      .md\:block { display: block !important; }
+    }
+
+    @media (min-width: 1024px) {
+      .lg\:order-1 { order: 1; }
+      .lg\:order-2 { order: 2; }
+      .lg\:grid-cols-qr { grid-template-columns: minmax(240px, 300px) 1fr; }
+      .lg\:grid-cols-dash { grid-template-columns: 1fr 320px; }
+    }
   </style>
 </head>
-<body class="font-body">
+<body>

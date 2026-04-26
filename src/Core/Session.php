@@ -18,7 +18,9 @@ final class Session
             return;
         }
 
-        $secure = Config::bool('SESSION_SECURE', false);
+        // Default true — sessions MUST carry the Secure flag in production (HTTPS).
+        // Only set SESSION_SECURE=false in .env for local HTTP development.
+        $secure = Config::bool('SESSION_SECURE', true);
         $sameSite = (string) Config::get('SESSION_SAMESITE', 'Lax');
         $lifetime = Config::int('SESSION_LIFETIME', 7200);
         $cookieName = (string) Config::get('SESSION_COOKIE_NAME', 'gym_attendance_session');

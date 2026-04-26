@@ -91,9 +91,10 @@ final class Request
         $remoteAddr = (string) ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
         $trustedProxies = array_filter(array_map('trim', explode(',', (string) Config::get('TRUSTED_PROXIES', '127.0.0.1'))));
 
-        if ($trustedProxies && in_array($remoteAddr, $trustedProxies, true)) {
+        if ($trustedProxies && self::isTrustedProxy($remoteAddr, $trustedProxies)) {
             $forwardedFor = (string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? '');
             if ($forwardedFor !== '') {
+                // X-Forwarded-For: client, proxy1, proxy2 — leftmost is the client.
                 $ips = array_map('trim', explode(',', $forwardedFor));
                 foreach ($ips as $candidate) {
                     if ($candidate !== '' && filter_var($candidate, FILTER_VALIDATE_IP) !== false) {
@@ -104,6 +105,60 @@ final class Request
         }
 
         return filter_var($remoteAddr, FILTER_VALIDATE_IP) !== false ? $remoteAddr : '0.0.0.0';
+    }
+
+    /**
+     * Returns true if $ip is in the trusted-proxy list.
+     * Supports exact IPs and CIDR notation (e.g. 172.16.0.0/12).
+     */
+    private static function isTrustedProxy(string $ip, array $trustedProxies): bool
+    {
+        foreach ($trustedProxies as $proxy) {
+            if ($proxy === $ip) {
+                return true;
+            }
+
+            // CIDR range match (e.g. 172.16.0.0/12, ::1/128)
+            if (str_contains($proxy, '/')) {
+                [$network, $prefixLen] = explode('/', $proxy, 2);
+                $prefixLen = (int) $prefixLen;
+
+                // IPv4 CIDR
+                if (filter_var($network, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)
+                    && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)
+                    && $prefixLen >= 0 && $prefixLen <= 32) {
+                    $mask = $prefixLen === 0 ? 0 : (~0 << (32 - $prefixLen));
+                    if ((ip2long($ip) & $mask) === (ip2long($network) & $mask)) {
+                        return true;
+                    }
+                }
+
+                // IPv6 CIDR
+                if (filter_var($network, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)
+                    && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)
+                    && $prefixLen >= 0 && $prefixLen <= 128) {
+                    $packedIp  = inet_pton($ip);
+                    $packedNet = inet_pton($network);
+                    if ($packedIp !== false && $packedNet !== false) {
+                        $bytes = (int) ceil($prefixLen / 8);
+                        $match = true;
+                        for ($i = 0; $i < $bytes; $i++) {
+                            $bits = min(8, $prefixLen - $i * 8);
+                            $maskByte = $bits >= 8 ? 0xFF : (~0 << (8 - $bits)) & 0xFF;
+                            if ((ord($packedIp[$i]) & $maskByte) !== (ord($packedNet[$i]) & $maskByte)) {
+                                $match = false;
+                                break;
+                            }
+                        }
+                        if ($match) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 
     public static function isAjax(): bool

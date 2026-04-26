@@ -87,8 +87,9 @@ final class MemberController
         }
 
         View::render('members/edit', [
-            'csrfToken' => Csrf::token(),
-            'member' => $member,
+            'csrfToken'       => Csrf::token(),
+            'member'          => $member,
+            'attendanceCount' => $this->members->getAttendanceCount((int) $member['id']),
         ]);
     }
 
@@ -182,6 +183,46 @@ final class MemberController
         } catch (Throwable $throwable) {
             Logger::error('Member delete failed', ['error' => $throwable->getMessage()]);
             flash('error', 'Unable to delete member. Please try again.');
+        }
+
+        redirect('/members');
+    }
+
+    /**
+     * Force-delete: removes the member AND all their attendance history.
+     * Requires a second "confirm" field in the POST body as a safeguard.
+     */
+    public function forceDelete(): void
+    {
+        Auth::requireAdmin();
+        Csrf::assertValid((string) Request::input('_csrf'));
+        $this->rateLimit('member_delete', (string) (Auth::id() ?? Request::ip()), 10, 60);
+
+        // Extra safeguard: the form must include confirm=FORCE_DELETE
+        $confirm = (string) Request::input('confirm');
+        if ($confirm !== 'FORCE_DELETE') {
+            flash('error', 'Force delete was not confirmed. No changes were made.');
+            redirect('/members');
+        }
+
+        try {
+            $id = Validator::int(Request::input('id'), 'Member id');
+            $info = $this->members->forceDelete($id);
+            Logger::audit('member_force_delete_success', Auth::id(), [
+                'member_id' => $id,
+                'member_code' => $info['member_code'],
+                'logs_deleted' => $info['logs_deleted'],
+            ]);
+            flash('success', sprintf(
+                'Member "%s" and %d attendance record(s) permanently deleted.',
+                $info['full_name'],
+                $info['logs_deleted']
+            ));
+        } catch (InvalidArgumentException $throwable) {
+            flash('error', $throwable->getMessage());
+        } catch (Throwable $throwable) {
+            Logger::error('Member force delete failed', ['error' => $throwable->getMessage()]);
+            flash('error', 'Unable to force-delete member. Please try again.');
         }
 
         redirect('/members');

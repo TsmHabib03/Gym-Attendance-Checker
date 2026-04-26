@@ -1,0 +1,59 @@
+# =============================================================================
+# Cloudflare Named Tunnel Configuration
+# =============================================================================
+#
+# HOW TO SET THIS UP (one-time — takes ~5 minutes):
+#
+# 1. Install cloudflared on your laptop:
+#    Windows:  winget install Cloudflare.cloudflared
+#    macOS:    brew install cloudflared
+#    Linux:    https://pkg.cloudflare.com/
+#
+# 2. Log in to Cloudflare (opens browser):
+#    cloudflared tunnel login
+#    → This saves a cert.pem to ~/.cloudflared/
+#
+# 3. Create a NAMED tunnel (do this ONCE — the name is permanent):
+#    cloudflared tunnel create gym-attendance
+#    → Prints: Created tunnel gym-attendance with id xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+#    → Saves credentials JSON to ~/.cloudflared/<TUNNEL_ID>.json
+#
+# 4. Copy the credentials file into this project:
+#    cp ~/.cloudflared/<TUNNEL_ID>.json docker/cloudflared/credentials.json
+#
+# 5. Replace TUNNEL_ID below with the UUID printed in step 3.
+#
+# 6. Route a DNS hostname to the tunnel (you need a domain on Cloudflare):
+#    cloudflared tunnel route dns gym-attendance gym.yourdomain.com
+#    → Creates a CNAME record in Cloudflare DNS automatically.
+#    → This DNS entry persists even when your laptop is off.
+#
+# 7. Start everything:
+#    docker compose up -d
+#    → The cloudflared container auto-connects — no manual tunnel command needed.
+#
+# FREE DOMAIN OPTIONS (if you don't have one):
+#   • https://www.cloudflare.com/products/registrar/ (~$10/yr)
+#   • https://dash.cloudflare.com/ → Workers & Pages → Pages → create a project
+#     and use the .pages.dev subdomain (free, but can't tunnel to it directly)
+#   • Cheapest: get any domain from Namecheap/Porkbun (~$1/yr) then add to Cloudflare
+#
+# =============================================================================
+
+tunnel: YOUR_TUNNEL_ID_HERE
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  # Main app — maps your public hostname to the nginx container
+  - hostname: gym.yourdomain.com
+    service: http://web:80
+    originRequest:
+      # Keep connections alive to the nginx container
+      keepAliveConnections: 10
+      keepAliveTimeout: 90s
+      # Pass real client IP to your app
+      httpHostHeader: gym.yourdomain.com
+      noTLSVerify: false
+
+  # Catch-all: return 404 for anything not matched above
+  - service: http_status:404

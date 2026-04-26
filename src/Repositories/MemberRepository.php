@@ -9,19 +9,70 @@ use DateTimeImmutable;
 
 final class MemberRepository
 {
-    public function findAll(?string $search = null): array
+    /** Hard ceiling on rows returned in a single page — prevents OOM on large gyms. */
+    private const MAX_PAGE_SIZE = 200;
+
+    /**
+     * Return a paginated member list.
+     *
+     * @param int $limit  Rows per page (capped at MAX_PAGE_SIZE).
+     * @param int $offset Zero-based row offset.
+     */
+    public function findAll(?string $search = null, int $limit = 100, int $offset = 0): array
+    {
+        $limit  = max(1, min($limit, self::MAX_PAGE_SIZE));
+        $offset = max(0, $offset);
+
+        $pdo = Database::connection();
+
+        $baseSelect = "SELECT m.*, COALESCE(al.cnt, 0) AS attendance_count
+            FROM members m
+            LEFT JOIN (
+                SELECT member_id, COUNT(*) AS cnt
+                FROM attendance_logs
+                GROUP BY member_id
+            ) al ON al.member_id = m.id";
+
+        if ($search !== null && $search !== '') {
+            $escapedSearch = $this->escapeLike($search);
+            $stmt = $pdo->prepare(
+                $baseSelect
+                . " WHERE m.full_name LIKE :search ESCAPE '!'"
+                . " OR m.member_code LIKE :search ESCAPE '!'"
+                . " ORDER BY m.created_at DESC"
+                . " LIMIT :limit OFFSET :offset"
+            );
+            $stmt->bindValue(':search', '%' . $escapedSearch . '%');
+            $stmt->bindValue(':limit',  $limit,  \PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetchAll();
+        }
+
+        $stmt = $pdo->prepare($baseSelect . ' ORDER BY m.created_at DESC LIMIT :limit OFFSET :offset');
+        $stmt->bindValue(':limit',  $limit,  \PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    /** Total member count (used for pagination UI). */
+    public function countAll(?string $search = null): int
     {
         $pdo = Database::connection();
 
         if ($search !== null && $search !== '') {
             $escapedSearch = $this->escapeLike($search);
-            $stmt = $pdo->prepare("SELECT * FROM members WHERE full_name LIKE :search ESCAPE '!' OR member_code LIKE :search ESCAPE '!' ORDER BY created_at DESC");
+            $stmt = $pdo->prepare(
+                "SELECT COUNT(*) FROM members m
+                  WHERE m.full_name LIKE :search ESCAPE '!'"
+                . " OR m.member_code LIKE :search ESCAPE '!'"
+            );
             $stmt->execute([':search' => '%' . $escapedSearch . '%']);
-            return $stmt->fetchAll();
+            return (int) $stmt->fetchColumn();
         }
 
-        $stmt = $pdo->query('SELECT * FROM members ORDER BY created_at DESC');
-        return $stmt->fetchAll();
+        return (int) $pdo->query('SELECT COUNT(*) FROM members')->fetchColumn();
     }
 
     public function findById(int $id): ?array
@@ -108,6 +159,18 @@ final class MemberRepository
         $pdo = Database::connection();
         $stmt = $pdo->prepare('DELETE FROM members WHERE id = :id');
         $stmt->execute([':id' => $id]);
+    }
+
+    /**
+     * Delete all attendance log rows for a member (used before force-delete).
+     * Returns the number of rows deleted.
+     */
+    public function deleteAttendanceLogsByMemberId(int $memberId): int
+    {
+        $pdo = Database::connection();
+        $stmt = $pdo->prepare('DELETE FROM attendance_logs WHERE member_id = :member_id');
+        $stmt->execute([':member_id' => $memberId]);
+        return (int) $stmt->rowCount();
     }
 
     private function escapeLike(string $value): string

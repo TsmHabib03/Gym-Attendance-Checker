@@ -72,6 +72,12 @@ final class AuthController
                 'ip' => $ip,
                 'retry_after' => $retry,
             ]);
+            // RFC 6585 §4 — send Retry-After so clients / proxies know when
+            // to try again, and so automated tools back off correctly.
+            if (!headers_sent()) {
+                http_response_code(429);
+                header('Retry-After: ' . $retry);
+            }
             flash('error', 'Too many login attempts. Please wait ' . $retry . ' seconds.');
             redirect('/login');
         }

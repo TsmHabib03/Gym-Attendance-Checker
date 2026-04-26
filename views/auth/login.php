@@ -13,10 +13,11 @@ require __DIR__ . '/../partials/head.php';
      ============================================================ -->
 <main style="
   min-height: 100vh;
+  min-height: -webkit-fill-available;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px 16px;
+  padding: calc(24px + var(--safe-top)) 16px calc(24px + var(--safe-bottom));
 ">
   <div class="page-enter" style="width: 100%; max-width: 400px;">
 
@@ -51,7 +52,7 @@ require __DIR__ . '/../partials/head.php';
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 2px;
-      padding: 32px 28px;
+      padding: clamp(20px, 6vw, 32px) clamp(16px, 6vw, 28px);
     ">
       <!-- Header -->
       <div style="margin-bottom: 28px;">

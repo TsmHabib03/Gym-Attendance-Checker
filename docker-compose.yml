@@ -1,3 +1,28 @@
+################################################################################
+# docker-compose.yml — Gym Attendance Checker
+#
+# Services
+# ────────
+#   app      — PHP 8.3-FPM (application server)
+#   web      — nginx 1.27 (reverse proxy + load balancer)
+#   db       — MySQL 8.4
+#   tunnel   — Cloudflare named tunnel (persistent public URL)
+#
+# Load balancing
+# ──────────────
+# nginx distributes requests across ALL running "app" replicas using
+# least-connections.  Scale horizontally with:
+#
+#   docker compose up -d --scale app=3
+#
+# No other changes are needed — Docker's internal DNS resolves the "app"
+# hostname to all live containers and nginx round-robins automatically.
+#
+# Recommended replica counts:
+#   Development : 1  (default)
+#   Production  : 2–4 replicas per CPU core available to Docker
+################################################################################
+
 services:
   app:
     build:
@@ -15,6 +40,8 @@ services:
       - app_logs:/var/www/html/storage/logs
     networks:
       - gym-network
+    # SECURITY: no published ports — app is only reachable through nginx.
+    # To scale: docker compose up -d --scale app=3
 
   web:
     build:
@@ -24,7 +51,7 @@ services:
     depends_on:
       - app
     ports:
-      - "8080:80"
+      - "8080:80"          # local dev; behind Cloudflare tunnel in production
     volumes:
       - member_photos:/var/www/html/public/uploads/member_photos:ro
       - checkin_photos:/var/www/html/public/uploads/checkin_photos:ro
@@ -39,6 +66,10 @@ services:
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
+      # Security hardening: disable network access from outside the Docker network
+      - --bind-address=0.0.0.0    # still reachable inside gym-network only
+      - --local-infile=0          # prevent LOAD DATA LOCAL INFILE
+      - --skip-name-resolve       # faster; avoid reverse-DNS spoofing
     volumes:
       - db_data:/var/lib/mysql
       - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
@@ -50,6 +81,41 @@ services:
       retries: 20
     networks:
       - gym-network
+    # SECURITY: no published ports — DB is only reachable inside gym-network.
+
+  # ---------------------------------------------------------------------------
+  # Cloudflare Named Tunnel — persistent public URL
+  #
+  # SETUP (one-time):
+  #   1. Run:  cloudflared tunnel create gym-attendance
+  #   2. Copy: ~/.cloudflared/<TUNNEL_ID>.json  →  docker/cloudflared/credentials.json
+  #   3. Edit: docker/cloudflared/config.yml — set your TUNNEL_ID and hostname
+  #   4. Run:  cloudflared tunnel route dns gym-attendance gym.yourdomain.com
+  #
+  # After setup, "docker compose up -d" starts everything including the tunnel.
+  # The public URL stays the same forever — even after reboots.
+  #
+  # To disable the tunnel (local dev only), run:
+  #   docker compose up -d --scale tunnel=0
+  # ---------------------------------------------------------------------------
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --config /etc/cloudflared/config.yml run
+    depends_on:
+      - web
+    volumes:
+      - ./docker/cloudflared/config.yml:/etc/cloudflared/config.yml:ro
+      - ./docker/cloudflared/credentials.json:/etc/cloudflared/credentials.json:ro
+    networks:
+      - gym-network
+    # Health check: cloudflared exposes a metrics server on :2000
+    healthcheck:
+      test: ["CMD", "cloudflared", "tunnel", "--config", "/etc/cloudflared/config.yml", "info"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
 volumes:
   db_data:

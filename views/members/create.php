@@ -5,27 +5,27 @@ declare(strict_types=1);
 require __DIR__ . '/../partials/head.php';
 require __DIR__ . '/../partials/nav.php';
 ?>
-<div class="page-enter" style="max-width: 1280px; margin: 0 auto; padding: 32px 16px 64px;">
+<div class="page-enter page-container">
   <!-- Page header -->
-  <div style="margin-bottom: 32px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+  <div class="page-header">
     <div>
       <p style="font-size: 11px; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; margin: 0 0 6px;">Member Onboarding</p>
       <h1 style="
         font-family: 'Bebas Neue', sans-serif;
-        font-size: clamp(32px, 5vw, 48px);
+        font-size: clamp(28px, 5vw, 48px);
         letter-spacing: 0.10em;
         color: var(--white);
         margin: 0; line-height: 1;
       ">Add Member</h1>
     </div>
-    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+    <div class="page-header-actions">
       <a href="<?= e(url('/members')) ?>" class="btn-ghost" style="height: 38px; font-size: 11px;">← Back</a>
     </div>
   </div>
   <!-- Flash -->
   <?php require __DIR__ . '/../partials/flash.php'; ?>
   <!-- Two-column layout -->
-  <div style="display: grid; gap: 16px;" class="lg:grid-cols-[280px_1fr]">
+  <div class="sidebar-layout">
     <!-- ── SIDEBAR ── -->
     <aside class="order-2 lg:order-1" style="display: flex; flex-direction: column; gap: 16px;">
       <!-- Info card -->
@@ -129,9 +129,9 @@ require __DIR__ . '/../partials/nav.php';
               style="padding-top: 10px; height: auto; line-height: 1.4;"
             >
           </div>
-          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px;">
-            <button type="submit" class="btn-primary">Save Member</button>
-            <a href="<?= e(url('/members')) ?>" class="btn-ghost">Cancel</a>
+          <div class="btn-row btn-row-fill" style="margin-top: 4px;">
+            <button type="submit" class="btn-primary" style="min-width: 120px;">Save Member</button>
+            <a href="<?= e(url('/members')) ?>" class="btn-ghost" style="min-width: 80px;">Cancel</a>
           </div>
         </form>
       </div>
@@ -158,7 +158,7 @@ require __DIR__ . '/../partials/nav.php';
           Prompt: Open camera, capture photo, then click Save Member.
         </div>
         <!-- Video + Preview grid -->
-        <div style="display: grid; gap: 16px;" class="sm:grid-cols-2">
+        <div class="camera-grid">
           <!-- Live feed -->
           <div class="card-raised" style="padding: 12px;">
             <p style="font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px;">Live Camera</p>
@@ -201,10 +201,10 @@ require __DIR__ . '/../partials/nav.php';
               <option value="">Default camera</option>
             </select>
           </div>
-          <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-            <button type="button" id="cameraOpen"    class="btn-ghost"    style="height: 44px; padding: 0 20px; font-size: 12px; white-space: nowrap;">Open Camera</button>
-            <button type="button" id="cameraCapture" class="btn-primary"  style="height: 44px; padding: 0 20px; font-size: 12px; white-space: nowrap;" disabled>Capture Photo</button>
-            <button type="button" id="cameraClose"   class="btn-ghost"    style="height: 44px; padding: 0 20px; font-size: 12px; white-space: nowrap;" disabled>Close Camera</button>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; align-items: center;">
+            <button type="button" id="cameraOpen"    class="btn-ghost"    style="height: 44px; padding: 0 12px; font-size: 12px; white-space: nowrap; width: 100%;">Open Camera</button>
+            <button type="button" id="cameraCapture" class="btn-primary"  style="height: 44px; padding: 0 12px; font-size: 12px; white-space: nowrap; width: 100%;" disabled>Capture</button>
+            <button type="button" id="cameraClose"   class="btn-ghost"    style="height: 44px; padding: 0 12px; font-size: 12px; white-space: nowrap; width: 100%;" disabled>Close</button>
           </div>
         </div>
       </div>

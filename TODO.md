@@ -1,15 +1,11 @@
-# TODO: Fix 403 Forbidden on /public
+# Fix Tailwind CDN & ZXing Cache Issues
 
-## Problem
-Accessing `http://localhost/gym-attendance-checker/public` returns **403 Forbidden** because:
-1. Root `.htaccess` (`gym-attendance-checker/.htaccess`) has `Require all denied` (defense-in-depth for misconfigured docroots).
-2. `public/.htaccess` does **not** explicitly grant access, so the parent's denial cascades.
+## Steps
+- [x] 1. Analyze files and identify Tailwind usage, ZXing cache root cause, and gitignore stance
+- [x] 2. Remove Tailwind CDN from `views/partials/head.php` and add custom CSS utility replacements
+- [x] 3. Update `views/members/qr.php` to use semantic grid class instead of arbitrary Tailwind value
+- [x] 4. Update `views/dashboard/index.php` to use semantic grid class instead of arbitrary Tailwind value
+- [x] 5. Add cache-busting to `asset()` helper in `src/helpers.php`
+- [x] 6. Verify no `.gitignore` / `.dockerignore` changes needed for jsQR
 
-## Plan
-1. **Edit `public/.htaccess`**:
-   - Add an explicit `Require all granted` / `Allow from all` block at the top to override the root `.htaccess` denial **only** for the `public/` directory.
-   - Move `DirectoryIndex index.php` outside the `<IfModule !mod_rewrite.c>` fallback block so it always applies.
-   - Keep all existing security rules intact (probes, traversal, TRACE, dotfiles, backup files, headers, upload limits).
-2. **Verify** root directory and sensitive paths (`src/`, `views/`, `storage/`, `.env`) still return 403.
-3. **Test** `http://localhost/gym-attendance-checker/public` loads correctly.
 

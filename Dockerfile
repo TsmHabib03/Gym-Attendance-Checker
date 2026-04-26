@@ -20,14 +20,25 @@ WORKDIR /var/www/html
 
 COPY --from=vendor /app/vendor ./vendor
 COPY . .
-COPY docker/php/php.ini /usr/local/etc/php/conf.d/zz-app.ini
-COPY docker/php/entrypoint.sh /usr/local/bin/app-entrypoint
+COPY docker/php/php.ini         /usr/local/etc/php/conf.d/zz-app.ini
+COPY docker/php/fpm-pool.conf   /usr/local/etc/php-fpm.d/zz-app-pool.conf
+COPY docker/php/entrypoint.sh   /usr/local/bin/app-entrypoint
 
 RUN chmod +x /usr/local/bin/app-entrypoint \
     && mkdir -p /var/www/html/public/uploads/member_photos \
         /var/www/html/public/uploads/checkin_photos \
         /var/www/html/storage/logs \
-    && chown -R www-data:www-data /var/www/html/public/uploads /var/www/html/storage
+        /var/log/php-fpm \
+    && chown -R www-data:www-data \
+        /var/www/html/public/uploads \
+        /var/www/html/storage \
+        /var/log/php-fpm \
+    # Remove world-writable permissions from app source (uploaded files are
+    # handled by entrypoint; source files should be read-only to www-data).
+    && find /var/www/html -not -path '*/uploads/*' -not -path '*/storage/*' \
+            -not -path '*/vendor/*' -type f -exec chmod 644 {} + \
+    && find /var/www/html -not -path '*/uploads/*' -not -path '*/storage/*' \
+            -not -path '*/vendor/*' -type d -exec chmod 755 {} +
 
 ENTRYPOINT ["/usr/local/bin/app-entrypoint"]
 CMD ["php-fpm"]

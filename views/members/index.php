@@ -50,20 +50,20 @@ require __DIR__ . '/../partials/nav.php';
   </div>
 </div>
 
-<div class="page-enter" style="max-width: 1280px; margin: 0 auto; padding: 32px 16px 64px;">
+<div class="page-enter page-container">
   <!-- Page header -->
-  <div style="margin-bottom: 32px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+  <div class="page-header">
     <div>
       <p style="font-size: 11px; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; margin: 0 0 6px;">Member Hub</p>
       <h1 style="
         font-family: 'Bebas Neue', sans-serif;
-        font-size: clamp(32px, 5vw, 48px);
+        font-size: clamp(28px, 5vw, 48px);
         letter-spacing: 0.10em;
         color: var(--white);
         margin: 0; line-height: 1;
       ">Members</h1>
     </div>
-    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+    <div class="page-header-actions">
       <a href="<?= e(url('/members/create')) ?>" class="btn-primary" style="height: 38px; font-size: 11px;">+ Add Member</a>
       <a href="<?= e(url('/attendance/scan')) ?>" class="btn-ghost"   style="height: 38px; font-size: 11px;">Scan QR</a>
     </div>
@@ -71,7 +71,7 @@ require __DIR__ . '/../partials/nav.php';
   <!-- Flash -->
   <?php require __DIR__ . '/../partials/flash.php'; ?>
   <!-- Two-column layout -->
-  <div style="display: grid; gap: 16px;" class="lg:grid-cols-[280px_1fr]">
+  <div class="sidebar-layout">
     <!-- ── SIDEBAR ── -->
     <aside class="order-2 lg:order-1" style="display: flex; flex-direction: column; gap: 16px;">
       <!-- Stats -->
@@ -125,9 +125,9 @@ require __DIR__ . '/../partials/nav.php';
               value="<?= e($search) ?>"
               placeholder="Search by name or member code"
               class="input"
-              style="flex: 1; min-width: 200px;"
+              style="flex: 1; min-width: 0;"
             >
-            <button type="submit" class="btn-primary" style="height: 44px; font-size: 12px; flex-shrink: 0;">Search</button>
+            <button type="submit" class="btn-primary" style="height: 44px; font-size: 12px; flex-shrink: 0; white-space: nowrap;">Search</button>
           </div>
         </form>
       </div>
@@ -150,10 +150,12 @@ require __DIR__ . '/../partials/nav.php';
           <?php else: ?>
             <?php foreach ($members as $member): ?>
               <?php
-              $isActive   = (new DateTimeImmutable((string) $member['membership_end_date'])) >= new DateTimeImmutable('today');
-              $status      = $isActive ? 'Active' : 'Expired';
-              $statusClass = $isActive ? 'stat-badge stat-badge-ok' : 'stat-badge stat-badge-danger';
-              $photoSrc    = !empty($member['photo_path']) ? url((string) $member['photo_path']) : url('/assets/img/placeholder-member.svg');
+              $isActive      = (new DateTimeImmutable((string) $member['membership_end_date'])) >= new DateTimeImmutable('today');
+              $status        = $isActive ? 'Active' : 'Expired';
+              $statusClass   = $isActive ? 'stat-badge stat-badge-ok' : 'stat-badge stat-badge-danger';
+              $photoSrc      = !empty($member['photo_path']) ? url((string) $member['photo_path']) : url('/assets/img/placeholder-member.svg');
+              $attendanceCount = (int) ($member['attendance_count'] ?? 0);
+              $hasAttendance = $attendanceCount > 0;
               ?>
               <div style="padding: 16px 24px; border-bottom: 1px solid var(--border);">
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
@@ -175,6 +177,9 @@ require __DIR__ . '/../partials/nav.php';
                     </p>
                     <p style="font-size: 11px; color: var(--muted); margin: 0;">
                       Ends: <?= e($member['membership_end_date']) ?>
+                      <?php if ($hasAttendance): ?>
+                        · <span style="color: var(--subtle);"><?= e((string) $attendanceCount) ?> check-in(s)</span>
+                      <?php endif; ?>
                     </p>
                   </div>
                   <span class="<?= e($statusClass) ?>"><?= e($status) ?></span>
@@ -183,16 +188,30 @@ require __DIR__ . '/../partials/nav.php';
                   <a href="<?= e(url('/members/edit') . '?id=' . (string) $member['id']) ?>" class="btn-primary" style="height: 38px; font-size: 11px;">Edit</a>
                   <a href="<?= e(url('/members/qr')   . '?id=' . (string) $member['id']) ?>" class="btn-ghost"   style="height: 38px; font-size: 11px;">QR Code</a>
                 </div>
-                <form action="<?= e(url('/members/delete')) ?>" method="post" style="margin-top: 8px;">
-                  <input type="hidden" name="_csrf" value="<?= e($csrfToken) ?>">
-                  <input type="hidden" name="id"   value="<?= e((string) $member['id']) ?>">
-                  <button
-                    type="submit"
-                    class="btn-danger"
-                    style="width: 100%; height: 38px; font-size: 11px;"
-                    onclick="return confirm('Delete this member? This action cannot be undone.');"
-                  >Delete</button>
-                </form>
+                <?php if ($hasAttendance): ?>
+                  <form action="<?= e(url('/members/force-delete')) ?>" method="post" style="margin-top: 8px;">
+                    <input type="hidden" name="_csrf"    value="<?= e($csrfToken) ?>">
+                    <input type="hidden" name="id"       value="<?= e((string) $member['id']) ?>">
+                    <input type="hidden" name="confirm"  value="FORCE_DELETE">
+                    <button
+                      type="submit"
+                      class="btn-danger"
+                      style="width: 100%; height: 38px; font-size: 11px;"
+                      onclick="return confirm('⚠️ FORCE DELETE\n\nThis will permanently delete &quot;<?= e(addslashes((string) $member['full_name'])) ?>&quot; AND all <?= e((string) $attendanceCount) ?> attendance record(s).\n\nThis cannot be undone. Continue?');"
+                    >Force Delete (<?= e((string) $attendanceCount) ?> records)</button>
+                  </form>
+                <?php else: ?>
+                  <form action="<?= e(url('/members/delete')) ?>" method="post" style="margin-top: 8px;">
+                    <input type="hidden" name="_csrf" value="<?= e($csrfToken) ?>">
+                    <input type="hidden" name="id"   value="<?= e((string) $member['id']) ?>">
+                    <button
+                      type="submit"
+                      class="btn-danger"
+                      style="width: 100%; height: 38px; font-size: 11px;"
+                      onclick="return confirm('Delete this member? This action cannot be undone.');"
+                    >Delete</button>
+                  </form>
+                <?php endif; ?>
               </div>
             <?php endforeach; ?>
           <?php endif; ?>
@@ -215,10 +234,12 @@ require __DIR__ . '/../partials/nav.php';
               <?php else: ?>
                 <?php foreach ($members as $member): ?>
                   <?php
-                  $isActive   = (new DateTimeImmutable((string) $member['membership_end_date'])) >= new DateTimeImmutable('today');
-                  $status      = $isActive ? 'Active' : 'Expired';
-                  $statusClass = $isActive ? 'stat-badge stat-badge-ok' : 'stat-badge stat-badge-danger';
-                  $photoSrc    = !empty($member['photo_path']) ? url((string) $member['photo_path']) : url('/assets/img/placeholder-member.svg');
+                  $isActive        = (new DateTimeImmutable((string) $member['membership_end_date'])) >= new DateTimeImmutable('today');
+                  $status          = $isActive ? 'Active' : 'Expired';
+                  $statusClass     = $isActive ? 'stat-badge stat-badge-ok' : 'stat-badge stat-badge-danger';
+                  $photoSrc        = !empty($member['photo_path']) ? url((string) $member['photo_path']) : url('/assets/img/placeholder-member.svg');
+                  $attendanceCount = (int) ($member['attendance_count'] ?? 0);
+                  $hasAttendance   = $attendanceCount > 0;
                   ?>
                   <tr>
                     <td style="width: 64px; padding: 10px 12px 10px 16px;">
@@ -232,14 +253,11 @@ require __DIR__ . '/../partials/nav.php';
                           style="width: 52px; height: 52px; border-radius: 2px; object-fit: cover; border: 1px solid var(--border); cursor: pointer; display: block; transition: border-color 0.15s, opacity 0.15s;"
                           title="Click to view full photo"
                         >
-                        <!-- View icon overlay -->
                         <div style="
                           position: absolute; inset: 0;
-                          background: rgba(0,0,0,0.45);
-                          border-radius: 2px;
+                          background: rgba(0,0,0,0.45); border-radius: 2px;
                           display: flex; align-items: center; justify-content: center;
-                          opacity: 0; transition: opacity 0.15s;
-                          pointer-events: none;
+                          opacity: 0; transition: opacity 0.15s; pointer-events: none;
                         " class="photo-overlay">
                           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                             <circle cx="8" cy="8" r="4" stroke="white" stroke-width="1.5"/>
@@ -252,28 +270,44 @@ require __DIR__ . '/../partials/nav.php';
                       <span style="font-size: 13px; font-weight: 500; color: var(--light); display: block;">
                         <?= e($member['full_name']) ?>
                       </span>
-                      <span style="font-size: 11px; color: var(--muted);">
-                        <?= e($member['member_code']) ?>
-                      </span>
+                      <span style="font-size: 11px; color: var(--muted);"><?= e($member['member_code']) ?></span>
+                      <?php if ($hasAttendance): ?>
+                        <span style="display: block; font-size: 10px; color: var(--muted); margin-top: 2px;">
+                          <?= e((string) $attendanceCount) ?> check-in(s)
+                        </span>
+                      <?php endif; ?>
                     </td>
-                    <td style="color: var(--dim); font-size: 13px;">
-                      <?= e($member['membership_end_date']) ?>
-                    </td>
+                    <td style="color: var(--dim); font-size: 13px;"><?= e($member['membership_end_date']) ?></td>
                     <td><span class="<?= e($statusClass) ?>"><?= e($status) ?></span></td>
                     <td>
                       <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
                         <a href="<?= e(url('/members/edit') . '?id=' . (string) $member['id']) ?>" class="btn-primary" style="height: 32px; padding: 0 12px; font-size: 11px;">Edit</a>
                         <a href="<?= e(url('/members/qr')   . '?id=' . (string) $member['id']) ?>" class="btn-ghost"   style="height: 32px; padding: 0 12px; font-size: 11px;">QR</a>
-                        <form action="<?= e(url('/members/delete')) ?>" method="post" style="margin: 0;">
-                          <input type="hidden" name="_csrf" value="<?= e($csrfToken) ?>">
-                          <input type="hidden" name="id"   value="<?= e((string) $member['id']) ?>">
-                          <button
-                            type="submit"
-                            class="btn-danger"
-                            style="height: 32px; padding: 0 12px; font-size: 11px;"
-                            onclick="return confirm('Delete this member? This action cannot be undone.');"
-                          >Delete</button>
-                        </form>
+                        <?php if ($hasAttendance): ?>
+                          <form action="<?= e(url('/members/force-delete')) ?>" method="post" style="margin: 0;">
+                            <input type="hidden" name="_csrf"   value="<?= e($csrfToken) ?>">
+                            <input type="hidden" name="id"      value="<?= e((string) $member['id']) ?>">
+                            <input type="hidden" name="confirm" value="FORCE_DELETE">
+                            <button
+                              type="submit"
+                              class="btn-danger"
+                              style="height: 32px; padding: 0 12px; font-size: 11px;"
+                              title="Deletes member + <?= e((string) $attendanceCount) ?> attendance record(s)"
+                              onclick="return confirm('⚠️ FORCE DELETE\n\nThis will permanently delete &quot;<?= e(addslashes((string) $member['full_name'])) ?>&quot; AND all <?= e((string) $attendanceCount) ?> attendance record(s).\n\nThis cannot be undone. Continue?');"
+                            >Force Delete</button>
+                          </form>
+                        <?php else: ?>
+                          <form action="<?= e(url('/members/delete')) ?>" method="post" style="margin: 0;">
+                            <input type="hidden" name="_csrf" value="<?= e($csrfToken) ?>">
+                            <input type="hidden" name="id"   value="<?= e((string) $member['id']) ?>">
+                            <button
+                              type="submit"
+                              class="btn-danger"
+                              style="height: 32px; padding: 0 12px; font-size: 11px;"
+                              onclick="return confirm('Delete this member? This action cannot be undone.');"
+                            >Delete</button>
+                          </form>
+                        <?php endif; ?>
                       </div>
                     </td>
                   </tr>

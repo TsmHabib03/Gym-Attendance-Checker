@@ -43,6 +43,35 @@ final class AttendanceService
             throw new InvalidArgumentException('Member not found for this QR token.');
         }
 
+        $memberId = (int) $member['id'];
+
+        // ── Race-condition guard ────────────────────────────────────────────
+        // Without a lock, two near-simultaneous scans of the same QR can both
+        // pass findRecentAccepted() before either writes to attendance_logs —
+        // the classic TOCTOU bug that lets a single QR admit twice.
+        //
+        // GET_LOCK() acquires a named advisory lock in MySQL for this member.
+        // Any second request for the same lock blocks here (up to 5 s) until
+        // the first releases it, serialising the check + insert pair.
+        $pdo = \App\Core\Database::connection();
+        $lockName = 'gym_checkin_' . $memberId;
+        $locked = (bool) $pdo->query(
+            "SELECT GET_LOCK(" . $pdo->quote($lockName) . ", 5)"
+        )->fetchColumn();
+
+        if (!$locked) {
+            throw new \RuntimeException('Scanner is busy for this member. Please scan again.');
+        }
+
+        try {
+            return $this->performCheckIn($member, $memberId, $ipAddress, $photoData);
+        } finally {
+            $pdo->query("SELECT RELEASE_LOCK(" . $pdo->quote($lockName) . ")");
+        }
+    }
+
+    private function performCheckIn(array $member, int $memberId, string $ipAddress, ?string $photoData): array
+    {
         $status = $this->membershipStatus($member);
         $scanStatus = 'accepted';
         $note = 'Check-in accepted.';
@@ -55,7 +84,7 @@ final class AttendanceService
 
         $duplicateWindow = Config::int('DUPLICATE_SCAN_WINDOW_SECONDS', 45);
         if ($scanStatus === 'accepted') {
-            $duplicate = $this->attendance->findRecentAccepted((int) $member['id'], $duplicateWindow);
+            $duplicate = $this->attendance->findRecentAccepted($memberId, $duplicateWindow);
             if ($duplicate) {
                 $scanStatus = 'duplicate_denied';
                 $note = 'Duplicate scan detected inside cool-down window.';
@@ -67,7 +96,7 @@ final class AttendanceService
         }
 
         $logId = $this->attendance->logScan([
-            'member_id' => (int) $member['id'],
+            'member_id' => $memberId,
             'status' => $scanStatus,
             'note' => $note,
             'ip_address' => $ipAddress,
@@ -76,7 +105,7 @@ final class AttendanceService
 
         Logger::audit('checkin_scanned', null, [
             'attendance_log_id' => $logId,
-            'member_id' => (int) $member['id'],
+            'member_id' => $memberId,
             'status' => $scanStatus,
         ]);
 
@@ -90,7 +119,7 @@ final class AttendanceService
 
         return [
             'member' => [
-                'id' => (int) $member['id'],
+                'id' => $memberId,
                 'full_name' => $member['full_name'],
                 'photo_path' => $member['photo_path'],
                 'email' => $member['email'],

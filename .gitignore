@@ -9,3 +9,6 @@
 /.idea/
 /.vscode/
 Thumbs.db
+
+# Cloudflare Tunnel — credentials MUST NOT be committed
+/docker/cloudflared/credentials.json

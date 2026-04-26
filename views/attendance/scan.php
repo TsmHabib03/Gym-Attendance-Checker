@@ -5,20 +5,20 @@ declare(strict_types=1);
 require __DIR__ . '/../partials/head.php';
 require __DIR__ . '/../partials/nav.php';
 ?>
-<div class="page-enter" style="max-width: 1280px; margin: 0 auto; padding: 32px 16px 64px;">
+<div class="page-enter page-container">
   <!-- Page header -->
-  <div style="margin-bottom: 32px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+  <div class="page-header">
     <div>
       <p style="font-size: 11px; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; margin: 0 0 6px;">Scanner Room</p>
       <h1 style="
         font-family: 'Bebas Neue', sans-serif;
-        font-size: clamp(32px, 5vw, 48px);
+        font-size: clamp(28px, 5vw, 48px);
         letter-spacing: 0.10em;
         color: var(--white);
         margin: 0; line-height: 1;
       ">QR Scanner</h1>
     </div>
-    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+    <div class="page-header-actions">
       <a href="<?= e(url('/dashboard')) ?>" class="btn-ghost"   style="height: 38px; font-size: 11px;">← Dashboard</a>
       <a href="<?= e(url('/members')) ?>"   class="btn-primary" style="height: 38px; font-size: 11px;">Members</a>
     </div>
@@ -26,9 +26,9 @@ require __DIR__ . '/../partials/nav.php';
   <!-- Flash -->
   <?php require __DIR__ . '/../partials/flash.php'; ?>
   <!-- Two-column layout -->
-  <div style="display: grid; gap: 16px;" class="lg:grid-cols-[280px_1fr]">
+  <div class="sidebar-layout">
     <!-- ── SIDEBAR ── -->
-    <aside class="order-2 lg:order-1" style="display: flex; flex-direction: column; gap: 16px;">
+    <aside class="order-2 lg:order-1" style="display: flex; flex-direction: column; gap: 16px; min-width: 0;">
       <!-- Info card -->
       <div class="card" style="padding: 20px;">
         <div class="section-rule" style="margin-bottom: 16px;">
@@ -70,7 +70,7 @@ require __DIR__ . '/../partials/nav.php';
       </div>
     </aside>
     <!-- ── MAIN: Scanner + Result ── -->
-    <div class="order-1 lg:order-2 lg:grid-cols-2" style="display: grid; gap: 16px;">
+    <div class="order-1 lg:order-2 scanner-grid">
       <!-- Live Scanner panel -->
       <div class="card" style="padding: 20px 24px;">
         <div style="
@@ -170,6 +170,7 @@ require __DIR__ . '/../partials/nav.php';
     photoCaptureEnabled: <?= $photoCaptureEnabled ? 'true' : 'false' ?>,
   };
 </script>
-<script nonce="<?= e(csp_nonce()) ?>" src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+<!-- ZXing browser+library bundle — served locally -->
+<script nonce="<?= e(csp_nonce()) ?>" src="<?= e(asset('js/zxing.min.js')) ?>"></script>
 <script nonce="<?= e(csp_nonce()) ?>" src="<?= e(asset('js/scan.js')) ?>"></script>
 <?php require __DIR__ . '/../partials/foot.php'; ?>
