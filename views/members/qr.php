@@ -118,7 +118,7 @@ require __DIR__ . '/../partials/nav.php';
           </div>
         </div>
 
-        <div style="display: flex; justify-content: center; padding: 8px 0;">
+        <div class="bcard-preview-wrap">
           <!-- BUSINESS CARD -->
           <div class="bcard" id="printCard" data-qr="<?= e($qrTokenForRender) ?>">
 
@@ -330,7 +330,8 @@ require __DIR__ . '/../partials/nav.php';
 <style>
 /* =========================================================
    BUSINESS CARD  — 3.5 × 2 in, dark theme
-   Layout: header strip | body [ QR-left | details-right ]
+   Always rendered at exact physical size; JS scales it on
+   narrow screens so nothing ever reflows or misaligns.
    ========================================================= */
 .bcard {
   width: 3.5in;
@@ -345,6 +346,17 @@ require __DIR__ . '/../partials/nav.php';
   gap: 0;
   page-break-inside: avoid;
   break-inside: avoid;
+  /* transform-origin set by JS scaler */
+  transform-origin: top center;
+}
+
+/* --- Screen wrapper — JS writes height to prevent collapse after scale --- */
+.bcard-preview-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+  overflow: visible;
 }
 
 /* --- Header --- */
@@ -364,8 +376,6 @@ require __DIR__ . '/../partials/nav.php';
   display: block;
   flex-shrink: 0;
   background: transparent;
-  /* Force the logo to render pure white so it's always visible
-     on the dark card, regardless of the original PNG colour */
   filter: brightness(0) invert(1);
 }
 .bcard-brand { line-height: 1.1; }
@@ -402,15 +412,28 @@ require __DIR__ . '/../partials/nav.php';
   align-items: center;
   justify-content: center;
 }
-/* qrcode.js renders both a canvas (used to draw) and an img (the output).
-   Hide the canvas — only the img should print. */
-.bcard-qr canvas { display: none !important; }
-.bcard-qr img {
-  display: block !important;
-  width: 116px !important;
-  height: 116px !important;
+
+/*
+ * qrcode.js: draws on <canvas> synchronously, then ASYNC converts to
+ * data-URI and sets <img> src.  The async step silently fails on iOS
+ * Safari, Android WebView, and strict CSP environments.
+ *
+ * Fix: show <canvas> on BOTH screen and print — it is always drawn and
+ * never depends on data-URI.  The library still creates the <img> but
+ * we don't use it. print-color-adjust preserves colours when printing.
+ */
+.bcard-qr canvas {
+  display: block   !important;   /* beats library's inline style="display:none" */
+  width:   116px   !important;
+  height:  116px   !important;
   border-radius: 2px;
   border: 2px solid #333333;
+  image-rendering: pixelated;    /* crisp QR modules at any DPR */
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.bcard-qr img {
+  display: none !important;      /* canvas is used instead; img stays hidden */
 }
 
 /* --- Details side (right) --- */
@@ -467,20 +490,24 @@ require __DIR__ . '/../partials/nav.php';
 .bcard-expired { color: #f87171 !important; }
 
 /* =========================================================
-   PRINT
+   PRINT — restore exact dimensions (JS scale is CSS transform,
+   which does NOT affect print layout — so the card is always
+   printed at true 3.5 × 2 in regardless of screen zoom).
    ========================================================= */
 @media print {
   @page { size: auto; margin: 0.3in; }
   body { background: #0a0a0a !important; color: #ffffff !important; }
   .no-print, header, nav { display: none !important; }
   .bcard {
+    transform: none !important;   /* undo the JS scale for print */
+    width: 3.5in !important;
+    height: 2in !important;
     background: #111111 !important;
     border: 1px solid #2a2a2a !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
   .bcard-logo { background: transparent !important; filter: brightness(0) invert(1) !important; }
-  .bcard-qr img, .bcard-qr canvas { border-color: #333333 !important; }
 }
 </style>
 
@@ -490,6 +517,43 @@ require __DIR__ . '/../partials/nav.php';
     var btn = document.getElementById(id);
     if (btn) btn.addEventListener('click', function () { window.print(); });
   });
+})();
+</script>
+
+<!-- Card scaler: keeps the card at exact 3.5×2in internally but
+     scales it down uniformly on narrow screens so nothing reflows. -->
+<script nonce="<?= e(csp_nonce()) ?>">
+(function () {
+  var CARD_W = 336; // 3.5in at 96 dpi
+  var CARD_H = 192; // 2.0in at 96 dpi
+
+  function scaleCard() {
+    var wrap = document.querySelector('.bcard-preview-wrap');
+    var card = document.getElementById('printCard');
+    if (!wrap || !card) return;
+
+    // Never scale during print — @media print { transform: none !important }
+    // handles that; JS shouldn't touch the card while the print dialog is open.
+    var available = wrap.clientWidth - 16; // 8px breathing room each side
+    var scale = Math.min(1, available / CARD_W);
+
+    if (scale < 1) {
+      card.style.transform = 'scale(' + scale.toFixed(4) + ')';
+      card.style.transformOrigin = 'top center';
+      // Collapse the dead space left by transform (transform doesn't affect layout flow)
+      wrap.style.height = Math.ceil(CARD_H * scale + 16) + 'px';
+    } else {
+      card.style.transform = '';
+      card.style.transformOrigin = '';
+      wrap.style.height = '';
+    }
+  }
+
+  // Run on load and on every resize
+  document.addEventListener('DOMContentLoaded', scaleCard);
+  window.addEventListener('resize', scaleCard);
+  // Also run immediately in case DOMContentLoaded already fired
+  if (document.readyState !== 'loading') scaleCard();
 })();
 </script>
 <?php require __DIR__ . '/../partials/foot.php'; ?>

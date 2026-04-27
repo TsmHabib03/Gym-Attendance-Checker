@@ -1,0 +1,280 @@
+---
+# Cloudflare Tunnel Configuration - Enhanced Production Setup
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudflare-tunnel-config
+  namespace: gym-app
+data:
+  config.yml: |
+    tunnel: gym-attendance-tunnel
+    credentials-file: /etc/cloudflared/creds/credentials.json
+
+    # Ingress rules (route traffic to services)
+    ingress:
+      # Production domain
+      - hostname: gym.yourdomain.com
+        service: http://nginx-service:80
+
+      # Admin subdomain
+      - hostname: admin.gym.yourdomain.com
+        service: http://nginx-service:80
+        originRequest:
+          httpHostHeader: gym.yourdomain.com
+
+      # API subdomain
+      - hostname: api.gym.yourdomain.com
+        service: http://nginx-service:80
+        originRequest:
+          httpHostHeader: gym.yourdomain.com
+
+      # Health check endpoint
+      - service: http://nginx-service:80
+        originRequest:
+          httpHostHeader: gym.yourdomain.com
+
+---
+# Secret for Cloudflare Tunnel Credentials
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudflare-tunnel-credentials
+  namespace: gym-app
+type: Opaque
+stringData:
+  credentials.json: |
+    {
+      "AccountTag": "your-account-id",
+      "TunnelSecret": "base64-encoded-tunnel-secret",
+      "TunnelID": "your-tunnel-id",
+      "TunnelName": "gym-attendance-tunnel"
+    }
+  # Get this by running: cloudflared tunnel login
+  # Then: cat ~/.cloudflared/<uuid>.json
+
+---
+# Cloudflare Tunnel Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflare-tunnel
+  namespace: gym-app
+  labels:
+    app: cloudflare-tunnel
+spec:
+  replicas: 2  # HA setup with 2 replicas
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: cloudflare-tunnel
+  template:
+    metadata:
+      labels:
+        app: cloudflare-tunnel
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "2000"
+    spec:
+      serviceAccountName: cloudflare-tunnel
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:2024.3.0  # Use specific version
+          imagePullPolicy: IfNotPresent
+
+          command:
+            - cloudflared
+            - tunnel
+            - --config
+            - /etc/cloudflared/config/config.yml
+            - --loglevel
+            - info
+            - --metrics
+            - 0.0.0.0:2000
+
+          ports:
+            - name: metrics
+              containerPort: 2000
+              protocol: TCP
+
+          env:
+            - name: TUNNEL_TRANSPORT_PROTOCOL
+              value: "auto"
+            - name: TUNNEL_METRICS
+              value: "0.0.0.0:2000"
+            - name: TZ
+              value: "UTC"
+
+          volumeMounts:
+            - name: config
+              mountPath: /etc/cloudflared/config
+              readOnly: true
+            - name: credentials
+              mountPath: /etc/cloudflared/creds
+              readOnly: true
+
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 2
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534  # nobody
+            capabilities:
+              drop:
+                - ALL
+
+      volumes:
+        - name: config
+          configMap:
+            name: cloudflare-tunnel-config
+        - name: credentials
+          secret:
+            secretName: cloudflare-tunnel-credentials
+
+      # Pod disruption budget for high availability
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - cloudflare-tunnel
+                topologyKey: kubernetes.io/hostname
+
+---
+# Service Account for Tunnel
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cloudflare-tunnel
+  namespace: gym-app
+
+---
+# Pod Disruption Budget (ensure at least 1 replica always running)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: cloudflare-tunnel-pdb
+  namespace: gym-app
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: cloudflare-tunnel
+
+---
+# Service for Cloudflare Tunnel metrics
+apiVersion: v1
+kind: Service
+metadata:
+  name: cloudflare-tunnel-metrics
+  namespace: gym-app
+  labels:
+    app: cloudflare-tunnel
+spec:
+  selector:
+    app: cloudflare-tunnel
+  ports:
+    - name: metrics
+      port: 2000
+      targetPort: 2000
+  type: ClusterIP
+
+---
+# Service Monitor for Prometheus (if using Prometheus Operator)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cloudflare-tunnel
+  namespace: gym-app
+  labels:
+    app: cloudflare-tunnel
+spec:
+  selector:
+    matchLabels:
+      app: cloudflare-tunnel
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+
+---
+# Ingress for Tunnel (optional - for direct K8s access)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gym-app-cloudflare
+  namespace: gym-app
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "30"
+    nginx.ingress.kubernetes.io/limit-connections: "10"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - gym.yourdomain.com
+        - admin.gym.yourdomain.com
+        - api.gym.yourdomain.com
+      secretName: gym-app-tls
+  rules:
+    - host: gym.yourdomain.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-service
+                port:
+                  number: 80
+    - host: admin.gym.yourdomain.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-service
+                port:
+                  number: 80
+    - host: api.gym.yourdomain.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-service
+                port:
+                  number: 80

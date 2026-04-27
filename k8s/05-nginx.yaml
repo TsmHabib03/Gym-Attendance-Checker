@@ -1,0 +1,116 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: gym-app
+data:
+  nginx.conf: |
+    user nginx;
+    worker_processes auto;
+    worker_rlimit_nofile 65535;
+    error_log /var/log/nginx/error.log warn;
+    pid /var/run/nginx.pid;
+    events {
+        worker_connections 4096;
+        multi_accept on;
+        use epoll;
+    }
+    http {
+        include       /etc/nginx/mime.types;
+        default_type  application/octet-stream;
+        server_tokens off;
+        sendfile on;
+        tcp_nopush on;
+        keepalive_timeout 65;
+        gzip on;
+        gzip_vary on;
+        gzip_types application/javascript application/json text/css text/plain image/svg+xml;
+        limit_req_zone  $binary_remote_addr zone=login:10m   rate=5r/m;
+        limit_req_zone  $binary_remote_addr zone=api:10m     rate=30r/m;
+        limit_req_zone  $binary_remote_addr zone=general:20m rate=120r/m;
+        limit_conn_zone $binary_remote_addr zone=conn_per_ip:10m;
+        limit_req_status  429;
+        limit_conn_status 429;
+        include /etc/nginx/conf.d/*.conf;
+    }
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: gym-app
+  labels:
+    app: nginx
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: YOUR_REGISTRY/gym-attendance-nginx:latest   # ← replace
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: member-photos
+              mountPath: /var/www/html/public/uploads/member_photos
+              readOnly: true
+            - name: checkin-photos
+              mountPath: /var/www/html/public/uploads/checkin_photos
+              readOnly: true
+            - name: nginx-conf
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 15
+      volumes:
+        - name: member-photos
+          persistentVolumeClaim:
+            claimName: member-photos-pvc
+        - name: checkin-photos
+          persistentVolumeClaim:
+            claimName: checkin-photos-pvc
+        - name: nginx-conf
+          configMap:
+            name: nginx-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+  namespace: gym-app
+spec:
+  selector:
+    app: nginx
+  ports:
+    - port: 80
+      targetPort: 80

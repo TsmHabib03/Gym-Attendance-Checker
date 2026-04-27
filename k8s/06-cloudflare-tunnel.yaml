@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared
+  namespace: gym-app
+  labels:
+    app: cloudflared
+spec:
+  replicas: 2          # two replicas = high-availability tunnel (Cloudflare load-balances)
+  selector:
+    matchLabels:
+      app: cloudflared
+  template:
+    metadata:
+      labels:
+        app: cloudflared
+    spec:
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:latest
+          args:
+            - tunnel
+            - --config
+            - /etc/cloudflared/config.yml
+            - run
+          volumeMounts:
+            - name: tunnel-config
+              mountPath: /etc/cloudflared/config.yml
+              subPath: config.yml
+            - name: tunnel-credentials
+              mountPath: /etc/cloudflared/credentials.json
+              subPath: credentials.json
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: 2000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 2000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: tunnel-config
+          configMap:
+            name: cloudflare-tunnel-config
+        - name: tunnel-credentials
+          secret:
+            secretName: cloudflare-tunnel-credentials

@@ -22,6 +22,7 @@ final class AlertService
         $appName = (string) Config::get('APP_NAME', 'REP CORE FITNESS');
         $appUrl  = rtrim((string) Config::get('APP_URL', ''), '/');
         $logoUrl = 'cid:logo';
+        $now     = (new DateTimeImmutable())->format('Y-m-d H:i:s');
 
         $subject = '[' . $appName . '] Expired Membership Scan Alert';
 
@@ -29,7 +30,7 @@ final class AlertService
             'memberName' => $member['full_name'] ?? 'Unknown',
             'memberCode' => $member['member_code'] ?? '—',
             'expiryDate' => $member['membership_end_date'] ?? '—',
-            'scannedAt'  => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+            'scannedAt'  => $now,
             'appName'    => $appName,
             'appUrl'     => $appUrl,
             'logoUrl'    => $logoUrl,
@@ -45,7 +46,7 @@ final class AlertService
             $member['full_name'] ?? 'Unknown',
             $member['member_code'] ?? '—',
             $member['membership_end_date'] ?? '—',
-            (new DateTimeImmutable())->format('Y-m-d H:i:s')
+            $now
         );
 
         $this->send(
@@ -57,26 +58,32 @@ final class AlertService
         );
     }
 
+    /**
+     * Send check-in alerts:
+     *   1. Admin alert  — always, using a fresh SMTP connection
+     *   2. Member alert — only if the member has an email, using its own fresh connection
+     *
+     * Each send gets its own PHPMailer instance so there is zero shared MIME
+     * state between the two messages. A short pause between sends keeps Gmail
+     * from treating the second connection as a duplicate submission.
+     */
     public function sendCheckInAlert(array $member): void
     {
-        $email = (string) ($member['email'] ?? '');
-        if ($email === '') {
-            return;
-        }
+        $appName     = (string) Config::get('APP_NAME', 'REP CORE FITNESS');
+        $appUrl      = rtrim((string) Config::get('APP_URL', ''), '/');
+        $adminEmail  = (string) Config::get('ADMIN_ALERT_EMAIL', '');
+        $memberEmail = trim((string) ($member['email'] ?? ''));
+        $logoUrl     = 'cid:logo';
+        $now         = (new DateTimeImmutable())->format('Y-m-d H:i:s');
 
-        $appName = (string) Config::get('APP_NAME', 'REP CORE FITNESS');
-        $appUrl  = rtrim((string) Config::get('APP_URL', ''), '/');
-        $logoUrl = 'cid:logo';
-
-        $subject = '[' . $appName . '] Check-In Confirmation';
-
+        // Resolve member photo once — reused in both emails if present
         $memberPhotoUrl = '';
         $extraImages    = [];
         if (!empty($member['photo_path'])) {
             $photoFullPath = dirname(__DIR__, 2) . '/public' . $member['photo_path'];
             if (is_file($photoFullPath)) {
                 $memberPhotoUrl = 'cid:memberphoto';
-                $extraImages[] = [
+                $extraImages[]  = [
                     'path' => $photoFullPath,
                     'cid'  => 'memberphoto',
                     'name' => 'member_photo.png',
@@ -84,10 +91,77 @@ final class AlertService
             }
         }
 
-        $htmlBody = $this->renderTemplate('checkin_alert', [
+        // ── 1. Admin alert — ALWAYS, FIRST ────────────────────────────────
+        if ($adminEmail !== '') {
+            $adminSubject = '[' . $appName . '] Member Check-In — ' . ($member['full_name'] ?? 'Unknown');
+
+            $adminHtml = $this->renderTemplate('checkin_admin_alert', [
+                'memberName'     => $member['full_name'] ?? 'Unknown',
+                'memberCode'     => $member['member_code'] ?? '—',
+                'memberEmail'    => $memberEmail !== '' ? $memberEmail : '(no email)',
+                'checkInDate'    => $now,
+                'expiryDate'     => $member['membership_end_date'] ?? '—',
+                'appName'        => $appName,
+                'appUrl'         => $appUrl,
+                'logoUrl'        => $logoUrl,
+                'memberPhotoUrl' => $memberPhotoUrl,
+            ]);
+
+            // Fall back gracefully if the admin template is missing
+            if ($adminHtml === '') {
+                $adminHtml = $this->renderTemplate('checkin_alert', [
+                    'memberName'     => $member['full_name'] ?? 'Unknown',
+                    'memberCode'     => $member['member_code'] ?? '—',
+                    'checkInDate'    => $now,
+                    'expiryDate'     => $member['membership_end_date'] ?? '—',
+                    'appName'        => $appName,
+                    'appUrl'         => $appUrl,
+                    'logoUrl'        => $logoUrl,
+                    'memberPhotoUrl' => $memberPhotoUrl,
+                ]);
+            }
+
+            $adminPlain = sprintf(
+                "[%s] Member Check-In\n\nMember: %s (%s)\nEmail: %s\nCheck-in: %s\nExpires: %s",
+                $appName,
+                $member['full_name'] ?? 'Unknown',
+                $member['member_code'] ?? '—',
+                $memberEmail !== '' ? $memberEmail : '(no email)',
+                $now,
+                $member['membership_end_date'] ?? '—'
+            );
+
+            $this->send(
+                $adminEmail,
+                $adminSubject,
+                $adminHtml,
+                $adminPlain,
+                ['event_type' => 'checkin_admin_alert', 'member_id' => $member['id'] ?? null],
+                $extraImages
+            );
+        } else {
+            Logger::warning('sendCheckInAlert: admin alert skipped — ADMIN_ALERT_EMAIL not set');
+        }
+
+        // ── 2. Member confirmation — fresh connection, own mailer ──────────
+        if ($memberEmail === '') {
+            Logger::warning('sendCheckInAlert: member confirmation skipped — no email on profile', [
+                'member_id'   => $member['id'] ?? null,
+                'member_code' => $member['member_code'] ?? '—',
+            ]);
+            return;
+        }
+
+        // Brief pause so Gmail does not see the two authentications as one
+        // duplicate submission (avoids silent drop of the second message).
+        sleep(1);
+
+        $memberSubject = '[' . $appName . '] Check-In Confirmation';
+
+        $memberHtml = $this->renderTemplate('checkin_alert', [
             'memberName'     => $member['full_name'] ?? 'Unknown',
             'memberCode'     => $member['member_code'] ?? '—',
-            'checkInDate'    => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+            'checkInDate'    => $now,
             'expiryDate'     => $member['membership_end_date'] ?? '—',
             'appName'        => $appName,
             'appUrl'         => $appUrl,
@@ -95,26 +169,22 @@ final class AlertService
             'memberPhotoUrl' => $memberPhotoUrl,
         ]);
 
-        $plainBody = sprintf(
-            "Hi %s,\n\n"
-            . "You have successfully checked in at %s.\n"
-            . "Member code: %s\n"
-            . "Check-in time: %s\n"
-            . "Membership expires: %s\n\n"
-            . "— %s",
+        $memberPlain = sprintf(
+            "Hi %s,\n\nYou have successfully checked in at %s.\n"
+            . "Member code: %s\nCheck-in time: %s\nMembership expires: %s\n\n— %s",
             $member['full_name'] ?? 'Unknown',
             $appName,
             $member['member_code'] ?? '—',
-            (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+            $now,
             $member['membership_end_date'] ?? '—',
             $appName
         );
 
         $this->send(
-            $email,
-            $subject,
-            $htmlBody,
-            $plainBody,
+            $memberEmail,
+            $memberSubject,
+            $memberHtml,
+            $memberPlain,
             ['event_type' => 'checkin_alert', 'member_id' => $member['id'] ?? null],
             $extraImages
         );
@@ -147,7 +217,8 @@ final class AlertService
             $expiryDt   = new DateTimeImmutable($expiryDate);
             $daysLeft   = (int) $from->diff($expiryDt)->days;
 
-            $subject = '[' . $appName . '] Membership Expiry Reminder — ' . $daysLeft . ' day' . ($daysLeft !== 1 ? 's' : '') . ' left';
+            $subject = '[' . $appName . '] Membership Expiry Reminder — '
+                . $daysLeft . ' day' . ($daysLeft !== 1 ? 's' : '') . ' left';
 
             $htmlBody = $this->renderTemplate('expiry_reminder', [
                 'memberName'      => $member['full_name'],
@@ -160,10 +231,8 @@ final class AlertService
             ]);
 
             $plainBody = sprintf(
-                "Hi %s,\n\n"
-                . "Your gym membership (code: %s) will expire on %s (%d day%s remaining).\n\n"
-                . "Please visit the gym front desk to renew your membership and keep your access.\n\n"
-                . "— %s",
+                "Hi %s,\n\nYour gym membership (code: %s) will expire on %s (%d day%s remaining).\n\n"
+                . "Please visit the gym front desk to renew your membership and keep your access.\n\n— %s",
                 $member['full_name'],
                 $member['member_code'],
                 $expiryDate,
@@ -193,63 +262,60 @@ final class AlertService
     // ----------------------------------------------------------------
 
     /**
-     * Render an email view template to a string.
+     * Build a pre-configured PHPMailer instance (no recipient/subject set yet).
      */
-    private function renderTemplate(string $name, array $variables): string
+    private function buildMailer(): PHPMailer
     {
-        $templatePath = dirname(__DIR__, 2) . '/views/emails/' . $name . '.php';
+        $mail = new PHPMailer(true);
+        $mail->isSMTP();
+        $mail->Host       = (string) Config::get('SMTP_HOST');
+        $mail->Port       = Config::int('SMTP_PORT', 587);
+        $mail->SMTPAuth   = true;
+        $mail->Username   = (string) Config::get('SMTP_USERNAME');
+        $mail->Password   = (string) Config::get('SMTP_PASSWORD');
+        $mail->SMTPSecure = (string) Config::get('SMTP_ENCRYPTION', 'tls');
+        $mail->Timeout    = 15; // seconds — prevent long hangs
+        $mail->CharSet    = 'UTF-8';
+        $mail->Encoding   = 'base64';
 
-        if (!is_file($templatePath)) {
-            Logger::error('Email template not found', ['template' => $name]);
-            return '';
-        }
+        $mail->setFrom(
+            (string) Config::get('MAIL_FROM_ADDRESS'),
+            (string) Config::get('MAIL_FROM_NAME', 'REP CORE FITNESS')
+        );
 
-        extract($variables, EXTR_SKIP);
-        ob_start();
-        require $templatePath;
-        return (string) ob_get_clean();
+        return $mail;
     }
 
     /**
-     * Send a single email with HTML + plain-text alternative bodies.
+     * Send one email using an existing PHPMailer instance (supports SMTPKeepAlive).
+     * Clears recipients and attachments between sends so the same mailer can be reused.
      */
-    private function send(
-        string $to,
-        string $subject,
-        string $htmlBody,
-        string $plainBody,
-        array  $context,
-        array  $extraImages = []
+    private function sendViaMailer(
+        PHPMailer $mail,
+        string    $to,
+        string    $subject,
+        string    $htmlBody,
+        string    $plainBody,
+        array     $extraImages,
+        array     $context
     ): bool {
-        $mail  = new PHPMailer(true);
         $sent  = false;
         $error = null;
 
         try {
-            $mail->isSMTP();
-            $mail->Host       = (string) Config::get('SMTP_HOST');
-            $mail->Port       = Config::int('SMTP_PORT', 587);
-            $mail->SMTPAuth   = true;
-            $mail->Username   = (string) Config::get('SMTP_USERNAME');
-            $mail->Password   = (string) Config::get('SMTP_PASSWORD');
-            $mail->SMTPSecure = (string) Config::get('SMTP_ENCRYPTION', 'tls');
+            $mail->clearAddresses();
+            $mail->clearAttachments();
 
-            $mail->setFrom(
-                (string) Config::get('MAIL_FROM_ADDRESS'),
-                (string) Config::get('MAIL_FROM_NAME', 'REP CORE FITNESS')
-            );
             $mail->addAddress($to);
+            $mail->Subject = $subject;
 
-            $mail->Subject  = $subject;
-            $mail->CharSet  = 'UTF-8';
-            $mail->Encoding = 'base64';
-
+            // Logo
             $logoPath = dirname(__DIR__, 2) . '/public/assets/img/repcore-removebg-preview.png';
             if (is_file($logoPath)) {
                 try {
                     $mail->addEmbeddedImage($logoPath, 'logo', 'logo.png');
                 } catch (\Throwable) {
-                    // silently ignore if logo embedding fails
+                    // non-fatal
                 }
             }
 
@@ -258,7 +324,7 @@ final class AlertService
                     try {
                         $mail->addEmbeddedImage($img['path'], $img['cid'], $img['name'] ?? basename($img['path']));
                     } catch (\Throwable) {
-                        // ignore single image failure
+                        // non-fatal
                     }
                 }
             }
@@ -274,9 +340,18 @@ final class AlertService
 
             $mail->send();
             $sent = true;
+
+            Logger::info('Email sent successfully', ['to' => $to, 'subject' => $subject]);
         } catch (Exception $exception) {
             $error = $exception->getMessage();
-            Logger::error('Failed to send email alert', [
+            Logger::error('Failed to send email', [
+                'to'      => $to,
+                'subject' => $subject,
+                'error'   => $error,
+            ]);
+        } catch (\Throwable $e) {
+            $error = $e->getMessage();
+            Logger::error('Unexpected error sending email', [
                 'to'      => $to,
                 'subject' => $subject,
                 'error'   => $error,
@@ -285,6 +360,36 @@ final class AlertService
 
         $this->logMail($to, $subject, $plainBody, $sent, $error, $context);
         return $sent;
+    }
+
+    /**
+     * Convenience wrapper — creates a fresh mailer for single-recipient sends.
+     */
+    private function send(
+        string $to,
+        string $subject,
+        string $htmlBody,
+        string $plainBody,
+        array  $context,
+        array  $extraImages = []
+    ): bool {
+        $mail = $this->buildMailer();
+        return $this->sendViaMailer($mail, $to, $subject, $htmlBody, $plainBody, $extraImages, $context);
+    }
+
+    private function renderTemplate(string $name, array $variables): string
+    {
+        $templatePath = dirname(__DIR__, 2) . '/views/emails/' . $name . '.php';
+
+        if (!is_file($templatePath)) {
+            Logger::error('Email template not found', ['template' => $name]);
+            return '';
+        }
+
+        extract($variables, EXTR_SKIP);
+        ob_start();
+        require $templatePath;
+        return (string) ob_get_clean();
     }
 
     private function logMail(
@@ -313,7 +418,7 @@ final class AlertService
                 ':created_at'      => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
             ]);
         } catch (\Throwable) {
-            // Avoid interrupting request flow if email log table is unavailable.
+            // Never let a logging failure abort the request
         }
     }
 }

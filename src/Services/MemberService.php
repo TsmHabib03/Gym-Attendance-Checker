@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Core\Database;
 use App\Core\Logger;
 use App\Core\Validator;
 use App\Repositories\MemberRepository;
@@ -48,7 +49,7 @@ final class MemberService
 
         $photoPath = $this->storeMemberPhoto($files['photo'] ?? null);
 
-        $memberCode = 'MBR-' . strtoupper(bin2hex(random_bytes(3)));
+        $memberCode = $this->generateNextMemberCode();
         $qrToken = bin2hex(random_bytes(24));
         $qrPayload = $this->buildQrPayload([
             'qr_token' => $qrToken,
@@ -421,5 +422,32 @@ final class MemberService
         if (is_file($absolutePath)) {
             @unlink($absolutePath);
         }
+    }
+
+    /**
+     * Generate the next sequential member code (REP-000001, REP-000002, etc.)
+     * Uses database-level atomic increment for thread-safe sequence generation.
+     */
+    private function generateNextMemberCode(): string
+    {
+        $pdo = Database::connection();
+
+        // Atomically increment and get the next sequence number
+        // This is thread-safe because of the ON DUPLICATE KEY UPDATE clause
+        $pdo->query('
+            INSERT INTO member_sequence (id, next_member_number)
+            VALUES (1, 1)
+            ON DUPLICATE KEY UPDATE next_member_number = next_member_number + 1
+        ');
+
+        $stmt = $pdo->query('SELECT next_member_number FROM member_sequence WHERE id = 1');
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        if (!$row || !isset($row['next_member_number'])) {
+            throw new InvalidArgumentException('Unable to generate member code. Sequence initialization failed.');
+        }
+
+        $nextNumber = (int) $row['next_member_number'];
+        return 'REP-' . str_pad((string) $nextNumber, 6, '0', STR_PAD_LEFT);
     }
 }

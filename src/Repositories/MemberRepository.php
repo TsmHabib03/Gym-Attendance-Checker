@@ -173,6 +173,29 @@ final class MemberRepository
         return (int) $stmt->rowCount();
     }
 
+    /**
+     * Return the next available RC-NNNNNN member code.
+     *
+     * Reads the current MAX sequential number from all existing RC-format codes
+     * and returns (max + 1) zero-padded to 6 digits.  The UNIQUE constraint on
+     * member_code guarantees no duplicates even under concurrent inserts — the
+     * caller should let the PDOException bubble up and ask the user to retry on
+     * the extremely rare collision.
+     */
+    public function nextSequentialCode(): string
+    {
+        $pdo  = Database::connection();
+        $stmt = $pdo->query(
+            "SELECT COALESCE(MAX(CAST(SUBSTRING(member_code, 4) AS UNSIGNED)), 0) AS max_seq
+               FROM members
+              WHERE member_code REGEXP '^RC-[0-9]+$'"
+        );
+        $row  = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $next = (int) ($row['max_seq'] ?? 0) + 1;
+
+        return 'RC-' . str_pad((string) $next, 6, '0', STR_PAD_LEFT);
+    }
+
     private function escapeLike(string $value): string
     {
         return str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $value);

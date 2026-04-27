@@ -1,0 +1,60 @@
+name = "gym-attendance-cf-worker"
+main = "cloudflare-worker.js"
+compatibility_date = "2024-04-15"
+
+# Account and Zone configuration
+account_id = "your-account-id"
+workers_dev = true
+
+# Environment configuration
+[env.production]
+name = "gym-attendance-cf-worker-prod"
+routes = [
+  { pattern = "gym.yourdomain.com/*", zone_name = "yourdomain.com" }
+]
+
+# KV Namespace bindings for rate limiting
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "your-kv-namespace-id"
+preview_id = "your-preview-kv-namespace-id"
+
+[env.production.kv_namespaces]
+binding = "RATE_LIMIT_KV"
+id = "your-production-kv-namespace-id"
+preview_id = "your-preview-kv-namespace-id"
+
+# Analytics Engine binding (optional)
+[[analytics_engine_datasets]]
+binding = "ANALYTICS"
+
+# Durable Objects (optional for advanced rate limiting)
+# [[durable_objects.bindings]]
+# name = "RATE_LIMITER"
+# class_name = "RateLimiter"
+
+# Build configuration
+[build]
+command = ""
+cwd = "."
+main = "src/index.js"
+
+# Compatibility flags
+[compatibility_flags]
+nodejs_compat = true
+
+# Observability - Logpush integration
+[observability]
+enabled = true
+
+# Limits
+limits = { cpu_milliseconds = 50 }
+
+# Development server
+[env.development]
+workers_dev = true
+routes = []
+
+# Trigger on-demand
+[triggers.crons]
+crons = ["0 0 * * *"]  # Daily at midnight UTC

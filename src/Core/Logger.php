@@ -25,6 +25,11 @@ final class Logger
         self::write('info', $message, $context);
     }
 
+    public static function warning(string $message, array $context = []): void
+    {
+        self::write('warning', $message, $context);
+    }
+
     public static function audit(string $eventType, ?int $adminId, array $context = []): void
     {
         self::write('audit', $eventType, $context);

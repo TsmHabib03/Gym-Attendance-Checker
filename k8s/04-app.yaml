@@ -1,0 +1,134 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: member-photos-pvc
+  namespace: gym-app
+spec:
+  accessModes: [ReadWriteMany]   # shared across replicas — use NFS or cloud storage
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: checkin-photos-pvc
+  namespace: gym-app
+spec:
+  accessModes: [ReadWriteMany]
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gym-app
+  namespace: gym-app
+  labels:
+    app: gym-app
+spec:
+  replicas: 2            # scale up freely — stateless PHP-FPM
+  selector:
+    matchLabels:
+      app: gym-app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0  # zero-downtime deploys
+  template:
+    metadata:
+      labels:
+        app: gym-app
+    spec:
+      containers:
+        - name: php-fpm
+          image: YOUR_REGISTRY/gym-attendance:latest   # ← replace with your image
+          ports:
+            - containerPort: 9000
+          envFrom:
+            - configMapRef:
+                name: gym-app-config
+          env:
+            - name: APP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: gym-app-secrets
+                  key: APP_SECRET
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: gym-app-secrets
+                  key: DB_PASS
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gym-app-secrets
+                  key: SMTP_PASSWORD
+          volumeMounts:
+            - name: member-photos
+              mountPath: /var/www/html/public/uploads/member_photos
+            - name: checkin-photos
+              mountPath: /var/www/html/public/uploads/checkin_photos
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            tcpSocket:
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 9000
+            initialDelaySeconds: 20
+            periodSeconds: 15
+      volumes:
+        - name: member-photos
+          persistentVolumeClaim:
+            claimName: member-photos-pvc
+        - name: checkin-photos
+          persistentVolumeClaim:
+            claimName: checkin-photos-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gym-app-service
+  namespace: gym-app
+spec:
+  selector:
+    app: gym-app
+  ports:
+    - port: 9000
+      targetPort: 9000
+
+---
+# Horizontal Pod Autoscaler — scales 2–8 replicas based on CPU
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: gym-app-hpa
+  namespace: gym-app
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: gym-app
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

@@ -110,11 +110,25 @@ final class AttendanceService
         ]);
 
         if ($scanStatus === 'expired_denied') {
-            $this->alerts->sendExpiredScanAlert($member);
+            try {
+                $this->alerts->sendExpiredScanAlert($member);
+            } catch (\Throwable $e) {
+                Logger::error('sendExpiredScanAlert threw unexpectedly', [
+                    'member_id' => $memberId,
+                    'error'     => $e->getMessage(),
+                ]);
+            }
         }
 
         if ($scanStatus === 'accepted') {
-            $this->alerts->sendCheckInAlert($member);
+            try {
+                $this->alerts->sendCheckInAlert($member);
+            } catch (\Throwable $e) {
+                Logger::error('sendCheckInAlert threw unexpectedly', [
+                    'member_id' => $memberId,
+                    'error'     => $e->getMessage(),
+                ]);
+            }
         }
 
         return [

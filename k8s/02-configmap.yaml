@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gym-app-config
+  namespace: gym-app
+data:
+  APP_ENV: "production"
+  APP_NAME: "REP CORE FITNESS"
+  APP_URL: "https://gym.yourdomain.com"      # ← replace with your domain
+  APP_TIMEZONE: "Asia/Manila"
+  APP_DEBUG: "false"
+
+  SESSION_COOKIE_NAME: "gym_attendance_session"
+  SESSION_SECURE: "true"
+  SESSION_SAMESITE: "Lax"
+  SESSION_LIFETIME: "7200"
+
+  # Trust Docker/K8s pod network + Cloudflare tunnel container
+  TRUSTED_PROXIES: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+
+  DUPLICATE_SCAN_WINDOW_SECONDS: "45"
+  CHECKIN_RATE_LIMIT_WINDOW_SECONDS: "60"
+  CHECKIN_RATE_LIMIT_MAX_ATTEMPTS: "25"
+  LOGIN_RATE_LIMIT_WINDOW_SECONDS: "300"
+  LOGIN_RATE_LIMIT_MAX_ATTEMPTS: "5"
+  RATE_LIMIT_RETENTION_DAYS: "7"
+  PHOTO_CAPTURE_ENABLED: "true"
+  EXPIRY_REMINDER_DAYS: "7"
+
+  DB_HOST: "mysql-service"
+  DB_PORT: "3306"
+  DB_NAME: "gym_attendance"
+  DB_USER: "gym_app_user"
+
+  MYSQL_DATABASE: "gym_attendance"
+  MYSQL_USER: "gym_app_user"
+
+  SMTP_HOST: "smtp.gmail.com"
+  SMTP_PORT: "587"
+  SMTP_USERNAME: "repcorefit@gmail.com"
+  SMTP_ENCRYPTION: "tls"
+  MAIL_FROM_ADDRESS: "repcorefit@gmail.com"
+  MAIL_FROM_NAME: "REP CORE FITNESS"
+  ADMIN_ALERT_EMAIL: "repcorefit@gmail.com"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudflare-tunnel-config
+  namespace: gym-app
+data:
+  config.yml: |
+    tunnel: YOUR_TUNNEL_ID_HERE
+    credentials-file: /etc/cloudflared/credentials.json
+    ingress:
+      - hostname: gym.yourdomain.com
+        service: http://nginx-service:80
+        originRequest:
+          keepAliveConnections: 10
+          keepAliveTimeout: 90s
+          httpHostHeader: gym.yourdomain.com
+      - service: http_status:404

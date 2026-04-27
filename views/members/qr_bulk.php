@@ -153,6 +153,8 @@ require __DIR__ . '/../partials/nav.php';
 <style>
 /* =========================================================
    SCREEN: preview grid
+   Cards stay at their exact 3.5×2 in dimensions; JS wraps
+   each in a scale-host that shrinks them on narrow screens.
    ========================================================= */
 .print-area {
   background: #0a0a0a;
@@ -163,13 +165,19 @@ require __DIR__ . '/../partials/nav.php';
   max-width: 960px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 16px;
+  align-items: start;
+}
+/* JS wraps each .bcard in .bcard-scale-host to absorb transform dead-space */
+.bcard-scale-host {
+  display: flex;
+  justify-content: center;
+  overflow: visible;
 }
 
 /* =========================================================
-   BUSINESS CARD  — 3.5 × 2 in, dark theme
-   Layout: header strip | body [ QR-left | details-right ]
+   BUSINESS CARD  — always 3.5 × 2 in internally
    ========================================================= */
 .bcard {
   width: 3.5in;
@@ -183,7 +191,7 @@ require __DIR__ . '/../partials/nav.php';
   flex-direction: column;
   page-break-inside: avoid;
   break-inside: avoid;
-  margin: 0 auto;
+  transform-origin: top center;
 }
 
 /* --- Header --- */
@@ -203,8 +211,6 @@ require __DIR__ . '/../partials/nav.php';
   display: block;
   flex-shrink: 0;
   background: transparent;
-  /* Force the logo to render pure white so it's always visible
-     on the dark card, regardless of the original PNG colour */
   filter: brightness(0) invert(1);
 }
 .bcard-brand { line-height: 1.1; }
@@ -241,16 +247,22 @@ require __DIR__ . '/../partials/nav.php';
   align-items: center;
   justify-content: center;
 }
-/* qrcode.js renders both a canvas (used to draw) and an img (the output).
-   Hide the canvas — only the img should print. */
-.bcard-qr canvas { display: none !important; }
-.bcard-qr img {
-  display: block !important;
-  width: 116px !important;
-  height: 116px !important;
+/*
+ * Show <canvas> on screen AND print — it is drawn synchronously and never
+ * depends on canvas.toDataURL() (which fails silently on many mobile browsers).
+ * print-color-adjust ensures colours are preserved when sent to the printer.
+ */
+.bcard-qr canvas {
+  display: block   !important;
+  width:   116px   !important;
+  height:  116px   !important;
   border-radius: 2px;
   border: 2px solid #333333;
+  image-rendering: pixelated;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
+.bcard-qr img { display: none !important; }
 
 /* --- Details side (right) --- */
 .bcard-details {
@@ -309,22 +321,11 @@ require __DIR__ . '/../partials/nav.php';
    PRINT — 2 cards per row, dark backgrounds preserved
    ========================================================= */
 @media print {
-  @page {
-    size: letter landscape;   /* wider page = 2 cards per row easily */
-    margin: 0.35in;
-  }
-  body {
-    background: #0a0a0a !important;
-    color: #ffffff !important;
-  }
-  .no-print, header, nav {
-    display: none !important;
-  }
-  .print-area {
-    background: #0a0a0a !important;
-    padding: 0 !important;
-    min-height: auto !important;
-  }
+  @page { size: letter landscape; margin: 0.35in; }
+  body { background: #0a0a0a !important; color: #ffffff !important; }
+  .no-print, header, nav { display: none !important; }
+  .print-area { background: #0a0a0a !important; padding: 0 !important; min-height: auto !important; }
+  .bcard-scale-host { display: contents; } /* flatten wrapper in print */
   .cards-grid {
     max-width: none !important;
     display: grid !important;
@@ -333,34 +334,71 @@ require __DIR__ . '/../partials/nav.php';
     justify-content: center !important;
   }
   .bcard {
+    transform: none !important;   /* undo JS scale */
+    width: 3.5in !important;
+    height: 2in !important;
     margin: 0 !important;
     background: #111111 !important;
     border: 1px solid #2a2a2a !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .bcard-logo {
-    background: transparent !important;
-    filter: brightness(0) invert(1) !important;
-  }
-  .bcard-qr img,
-  .bcard-qr canvas {
-    border-color: #333333 !important;
-  }
+  .bcard-logo { background: transparent !important; filter: brightness(0) invert(1) !important; }
 }
 
 /* =========================================================
-   RESPONSIVE (screen narrow)
+   RESPONSIVE SCREEN — single-column on narrow viewports
    ========================================================= */
 @media screen and (max-width: 780px) {
-  .cards-grid {
-    grid-template-columns: 1fr;
-  }
-  .bcard {
-    margin: 0 auto;
-  }
+  .cards-grid { grid-template-columns: 1fr; }
 }
 </style>
 
+<script nonce="<?= e(csp_nonce()) ?>">
+(function () {
+  var CARD_W = 336; // 3.5in at 96 dpi
+  var CARD_H = 192; // 2.0in at 96 dpi
+
+  function scaleCards() {
+    // Wrap each .bcard in a .bcard-scale-host (idempotent)
+    document.querySelectorAll('.bcard').forEach(function (card) {
+      var parent = card.parentElement;
+      if (!parent || parent.classList.contains('bcard-scale-host')) return;
+      var host = document.createElement('div');
+      host.className = 'bcard-scale-host';
+      parent.insertBefore(host, card);
+      host.appendChild(card);
+    });
+
+    // Compute available cell width from the grid
+    var grid = document.querySelector('.cards-grid');
+    if (!grid) return;
+    var cellW = grid.clientWidth;
+    // If grid is multi-column, each cell is roughly half (with gap)
+    var cols = Math.round(grid.clientWidth / CARD_W);
+    if (cols > 1) cellW = Math.floor((grid.clientWidth - (cols - 1) * 16) / cols);
+
+    var scale = Math.min(1, (cellW - 8) / CARD_W);
+
+    document.querySelectorAll('.bcard-scale-host').forEach(function (host) {
+      var card = host.querySelector('.bcard');
+      if (!card) return;
+      if (scale < 1) {
+        card.style.transform = 'scale(' + scale.toFixed(4) + ')';
+        card.style.transformOrigin = 'top center';
+        host.style.height = Math.ceil(CARD_H * scale) + 'px';
+      } else {
+        card.style.transform = '';
+        card.style.transformOrigin = '';
+        host.style.height = '';
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', scaleCards);
+  window.addEventListener('resize', scaleCards);
+  if (document.readyState !== 'loading') scaleCards();
+})();
+</script>
 <?php require __DIR__ . '/../partials/foot.php'; ?>
         

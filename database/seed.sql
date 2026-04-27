@@ -35,9 +35,9 @@ ON DUPLICATE KEY UPDATE
 
 INSERT INTO members (member_code, qr_token, full_name, email, gender, photo_path, qr_payload, membership_end_date, created_at, updated_at)
 VALUES
-  ('MBR-A1B2C3', '7a3f24c89e4a6341db1fce863118a00f3f96a7150b542417', 'Juan Dela Cruz', 'juan@example.com', 'male', NULL, '{"v":1,"type":"gym_member","qr_token":"7a3f24c89e4a6341db1fce863118a00f3f96a7150b542417","member_code":"MBR-A1B2C3","full_name":"Juan Dela Cruz","email":"juan@example.com","gender":"male","photo_path":null}', DATE_ADD(CURDATE(), INTERVAL 10 DAY), NOW(), NOW()),
-  ('MBR-D4E5F6', '9bb8131fa76ea5afbd82417d56f3d3c7ac1e6072ca9270f6', 'Maria Santos', 'maria@example.com', 'female', NULL, '{"v":1,"type":"gym_member","qr_token":"9bb8131fa76ea5afbd82417d56f3d3c7ac1e6072ca9270f6","member_code":"MBR-D4E5F6","full_name":"Maria Santos","email":"maria@example.com","gender":"female","photo_path":null}', DATE_ADD(CURDATE(), INTERVAL 3 DAY), NOW(), NOW()),
-  ('MBR-G7H8I9', 'f15ad3a7df0131d9bdb30aaf8cd9f1f8cb14859cd2e6759b', 'Pedro Reyes', 'pedro@example.com', 'male', NULL, '{"v":1,"type":"gym_member","qr_token":"f15ad3a7df0131d9bdb30aaf8cd9f1f8cb14859cd2e6759b","member_code":"MBR-G7H8I9","full_name":"Pedro Reyes","email":"pedro@example.com","gender":"male","photo_path":null}', DATE_SUB(CURDATE(), INTERVAL 5 DAY), NOW(), NOW())
+  ('REP-000001', '7a3f24c89e4a6341db1fce863118a00f3f96a7150b542417', 'Juan Dela Cruz', 'juan@example.com', 'male', NULL, '{"v":1,"type":"gym_member","qr_token":"7a3f24c89e4a6341db1fce863118a00f3f96a7150b542417","member_code":"REP-000001","full_name":"Juan Dela Cruz","email":"juan@example.com","gender":"male","photo_path":null}', DATE_ADD(CURDATE(), INTERVAL 10 DAY), NOW(), NOW()),
+  ('REP-000002', '9bb8131fa76ea5afbd82417d56f3d3c7ac1e6072ca9270f6', 'Maria Santos', 'maria@example.com', 'female', NULL, '{"v":1,"type":"gym_member","qr_token":"9bb8131fa76ea5afbd82417d56f3d3c7ac1e6072ca9270f6","member_code":"REP-000002","full_name":"Maria Santos","email":"maria@example.com","gender":"female","photo_path":null}', DATE_ADD(CURDATE(), INTERVAL 3 DAY), NOW(), NOW()),
+  ('REP-000003', 'f15ad3a7df0131d9bdb30aaf8cd9f1f8cb14859cd2e6759b', 'Pedro Reyes', 'pedro@example.com', 'male', NULL, '{"v":1,"type":"gym_member","qr_token":"f15ad3a7df0131d9bdb30aaf8cd9f1f8cb14859cd2e6759b","member_code":"REP-000003","full_name":"Pedro Reyes","email":"pedro@example.com","gender":"male","photo_path":null}', DATE_SUB(CURDATE(), INTERVAL 5 DAY), NOW(), NOW())
 ON DUPLICATE KEY UPDATE
   full_name = VALUES(full_name),
   email = VALUES(email),
@@ -45,3 +45,9 @@ ON DUPLICATE KEY UPDATE
   qr_payload = VALUES(qr_payload),
   membership_end_date = VALUES(membership_end_date),
   updated_at = VALUES(updated_at);
+
+-- Initialize the member sequence counter for next inserts
+INSERT INTO member_sequence (id, next_member_number)
+VALUES (1, 4)
+ON DUPLICATE KEY UPDATE
+  next_member_number = 4;
