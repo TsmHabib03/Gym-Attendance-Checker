@@ -41,4 +41,4 @@ RUN chmod +x /usr/local/bin/app-entrypoint \
             -not -path '*/vendor/*' -type d -exec chmod 755 {} +
 
 ENTRYPOINT ["/usr/local/bin/app-entrypoint"]
-CMD sh -c "php -S 0.0.0.0:${PORT} -t public"
+CMD sh -c "echo PORT=\$PORT; php -S 0.0.0.0:\$PORT -t public"
