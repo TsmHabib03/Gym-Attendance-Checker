@@ -131,11 +131,11 @@ require __DIR__ . '/../partials/nav.php';
     try {
       new window.QRCode(qrWrap, {
         text: qrText,
-        width: 116,
-        height: 116,
+        width: 135,
+        height: 135,
         colorDark:  '#ffffff',
         colorLight: '#111111',
-        correctLevel: window.QRCode.CorrectLevel ? window.QRCode.CorrectLevel.M : 0,
+        correctLevel: window.QRCode.CorrectLevel ? window.QRCode.CorrectLevel.H : 0,
       });
     } catch (_e) {}
   });
@@ -186,7 +186,7 @@ require __DIR__ . '/../partials/nav.php';
   border: 1px solid #2a2a2a;
   border-radius: 3px;
   box-sizing: border-box;
-  padding: 0.13in 0.15in 0.13in 0.13in;
+  padding: 0.07in 0.12in;        /* Optimized for larger QR: 6.7px top/bottom, 11.5px sides */
   display: flex;
   flex-direction: column;
   page-break-inside: avoid;
@@ -198,24 +198,24 @@ require __DIR__ . '/../partials/nav.php';
 .bcard-header {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 4px;
   border-bottom: 1px solid #2a2a2a;
-  padding-bottom: 6px;
-  margin-bottom: 6px;
+  padding-bottom: 2px;
+  margin-bottom: 2px;
   flex-shrink: 0;
 }
 .bcard-logo {
   width: auto;
-  height: 52px;
+  height: 32px;             /* Compact: 32px logo for more body space */
   border-radius: 2px;
   display: block;
   flex-shrink: 0;
   background: transparent;
   filter: brightness(0) invert(1);
 }
-.bcard-brand { line-height: 1.1; }
+.bcard-brand { line-height: 1; }
 .bcard-brand-name {
-  font-size: 9pt;
+  font-size: 6.5pt;         /* Compact header */
   font-weight: 700;
   letter-spacing: 0.10em;
   text-transform: uppercase;
@@ -223,9 +223,9 @@ require __DIR__ . '/../partials/nav.php';
   margin: 0;
 }
 .bcard-brand-sub {
-  font-size: 6pt;
+  font-size: 4pt;           /* Minimal footer text */
   color: #666666;
-  margin: 1px 0 0;
+  margin: 0;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -234,8 +234,8 @@ require __DIR__ . '/../partials/nav.php';
 .bcard-body {
   display: flex;
   flex-direction: row;
-  align-items: center;
-  gap: 10px;
+  align-items: center;      /* Center align QR with details */
+  gap: 6px;                 /* Gap between QR and details */
   flex: 1;
   min-height: 0;
 }
@@ -254,8 +254,8 @@ require __DIR__ . '/../partials/nav.php';
  */
 .bcard-qr canvas {
   display: block   !important;
-  width:   116px   !important;
-  height:  116px   !important;
+  width:   135px   !important;   /* Larger QR for reliable scanning */
+  height:  135px   !important;
   border-radius: 2px;
   border: 2px solid #333333;
   image-rendering: pixelated;
@@ -270,15 +270,15 @@ require __DIR__ . '/../partials/nav.php';
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;               /* Tight spacing for compact layout */
 }
 .bcard-name {
-  font-size: 9.5pt;
+  font-size: 10.5pt;      /* LARGER: prominent member name */
   font-weight: 700;
   color: #00d4ff;
-  margin: 0 0 3px;
+  margin: 0 0 2px;
   letter-spacing: 0.02em;
-  line-height: 1.2;
+  line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -287,33 +287,44 @@ require __DIR__ . '/../partials/nav.php';
   width: 100%;
   height: 1px;
   background: #2a2a2a;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
 }
 .bcard-info-row {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  gap: 4px;
-  line-height: 1.3;
+  align-items: flex-start;  /* Changed from baseline to accommodate wrapped text */
+  gap: 2px;               /* Minimal gap for tight layout */
+  line-height: 1.2;
+  flex-wrap: wrap;        /* Allow wrapping if needed */
 }
 .bcard-info-label {
-  font-size: 5.5pt;
+  font-size: 6pt;         /* LARGER: readable category labels */
   color: #666666;
   text-transform: uppercase;
   letter-spacing: 0.07em;
   flex-shrink: 0;
 }
 .bcard-info-val {
-  font-size: 7pt;
+  font-size: 8pt;         /* LARGER: prominent values (Code, Gender, Email) */
   color: #cccccc;
   font-weight: 600;
   text-align: right;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 130px;
+  max-width: 110px;       /* Adjusted for larger font */
 }
-.bcard-email   { font-size: 6.5pt; }
+.bcard-email {
+  font-size: 7pt;         /* Responsive email: slightly smaller to fit */
+  white-space: normal;    /* Allow wrapping for long emails */
+  word-break: break-word; /* Break long words/emails */
+  overflow: visible;      /* Show full email */
+  text-overflow: clip;    /* No ellipsis - show full text */
+  text-align: left;       /* Left-align for readability when wrapped */
+  max-width: 100%;        /* Use all available width */
+  line-height: 1.3;       /* Extra space for wrapped text */
+  flex-basis: 100%;       /* Email takes full width when wrapping */
+}
 .bcard-active  { color: #22c55e !important; }
 .bcard-expired { color: #f87171 !important; }
 
